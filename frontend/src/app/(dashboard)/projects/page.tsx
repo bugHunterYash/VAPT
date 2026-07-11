@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Project, columns } from "./columns"
 import { DataTable } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
@@ -5,56 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Plus, Search, Filter, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
-
-async function getData(): Promise<Project[]> {
-  // Mock data representing what will be fetched from FastAPI
-  return [
-    {
-      id: 1,
-      name: "CorpNet API Penetration Test",
-      organization_id: 1,
-      status: "In Progress",
-      assessment_type: "API",
-      environment: "Staging",
-      priority: "High",
-      progress: 45,
-      findings: { critical: 2, high: 5, medium: 12, low: 4 }
-    },
-    {
-      id: 2,
-      name: "Main Web App Assessment",
-      organization_id: 1,
-      status: "Assigned",
-      assessment_type: "Web",
-      environment: "Production",
-      priority: "Critical",
-      progress: 0,
-      findings: { critical: 0, high: 0, medium: 0, low: 0 }
-    },
-    {
-      id: 3,
-      name: "Mobile App Android Security Audit",
-      organization_id: 2,
-      status: "Completed",
-      assessment_type: "Android",
-      environment: "Production",
-      priority: "Medium",
-      progress: 100,
-      findings: { critical: 0, high: 1, medium: 3, low: 8 }
-    },
-    {
-      id: 4,
-      name: "Cloud Infrastructure Audit",
-      organization_id: 3,
-      status: "Pending Review",
-      assessment_type: "Cloud",
-      environment: "AWS",
-      priority: "High",
-      progress: 95,
-      findings: { critical: 1, high: 4, medium: 15, low: 20 }
-    }
-  ]
-}
 
 function SummaryCard({ title, value, subtitle }: { title: string, value: string | number, subtitle?: string }) {
     return (
@@ -68,8 +21,22 @@ function SummaryCard({ title, value, subtitle }: { title: string, value: string 
     )
 }
 
-export default async function ProjectsPage() {
-  const data = await getData()
+export default function ProjectsPage() {
+  const [data, setData] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then(res => res.json())
+      .then(fetchedData => {
+        if (Array.isArray(fetchedData)) setData(fetchedData)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [])
 
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto">
@@ -90,12 +57,10 @@ export default async function ProjectsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <SummaryCard title="Total Projects" value="24" subtitle="+2 this month" />
-          <SummaryCard title="In Progress" value="8" />
-          <SummaryCard title="Pending Review" value="3" />
-          <SummaryCard title="Completed" value="13" />
-          <SummaryCard title="Critical Findings" value="14" subtitle="Across all projects" />
-          <SummaryCard title="Overdue" value="1" subtitle="Requires attention" />
+          <SummaryCard title="Total Projects" value={data.length} />
+          <SummaryCard title="In Progress" value={data.filter(p => p.status === 'In Progress').length} />
+          <SummaryCard title="Pending Review" value={data.filter(p => p.status === 'Pending Review').length} />
+          <SummaryCard title="Completed" value={data.filter(p => p.status === 'Completed' || p.status === 'Approved').length} />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card/50 p-3 rounded-xl border border-border/50 shadow-sm">
@@ -120,7 +85,11 @@ export default async function ProjectsPage() {
       </div>
 
       <div className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
-        <DataTable columns={columns} data={data} />
+        {loading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading projects...</div>
+        ) : (
+          <DataTable columns={columns} data={data} />
+        )}
       </div>
     </div>
   )

@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  password         String
+  roleId           String
+  role             Role              @relation(fields: [roleId], references: [id])
+  organizationId   String?
+  isActive         Boolean           @default(true)
+  lastLogin        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  activities       UserActivity[]
+  notifications    Notification[]
+
+  createdProjects  Project[]         @relation("ProjectCreator")
+  auditedProjects  Project[]         @relation("ProjectAuditor")
+  reviewedProjects Project[]         @relation("ProjectReviewer")
+  projectActivities ProjectActivity[]
+}
+
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  ipAddress String?
+  device    String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Project {
+  id                String            @id @default(cuid())
+  name              String
+  organization      String
+  applicationName   String
+  assessmentType    String
+  priority          String
+  environment       String
+  targetUrl         String
+  targetIp          String?
+  status            String            @default("Assigned")
+  expectedStartDate DateTime
+  expectedEndDate   DateTime
+  
+  auditorId         String
+  auditor           User              @relation("ProjectAuditor", fields: [auditorId], references: [id])
+  
+  reviewerId        String
+  reviewer          User              @relation("ProjectReviewer", fields: [reviewerId], references: [id])
+  
+  createdBy         String
+  creator           User              @relation("ProjectCreator", fields: [createdBy], references: [id])
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  activities        ProjectActivity[]
+}
+
+model ProjectActivity {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  createdAt DateTime @default(now())
+}

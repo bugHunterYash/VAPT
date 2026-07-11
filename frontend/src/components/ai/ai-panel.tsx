@@ -22,14 +22,14 @@ export function AiAssistantPanel({ children }: { children?: React.ReactNode }) {
   
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        {children || (
-            <Button variant="outline" className="h-9 gap-2 border-border bg-card shadow-sm rounded-lg text-primary hover:bg-primary/10">
-                <Sparkles className="h-4 w-4" />
-                <span className="hidden md:inline">Ask AI</span>
-            </Button>
-        )}
-      </SheetTrigger>
+      <SheetTrigger render={
+        (children as React.ReactElement) || (
+          <Button variant="outline" className="h-9 gap-2 border-border bg-card shadow-sm rounded-lg text-primary hover:bg-primary/10">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden md:inline">Ask AI</span>
+          </Button>
+        )
+      } />
       <SheetContent className="w-full sm:max-w-md border-border bg-card p-0 flex flex-col">
         <SheetHeader className="p-6 border-b border-border/50 text-left">
             <div className="flex items-center gap-2 text-primary mb-1">

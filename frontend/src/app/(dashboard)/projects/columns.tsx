@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal, ArrowUpDown } from "lucide-react"
+import { format } from "date-fns"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,15 +13,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
 
 export type Project = {
-  id: number
+  id: string
   name: string
-  organization_id: number
+  organization: string
   status: string
-  assessment_type: string
+  assessmentType: string
   environment: string
-  priority?: string
+  priority: string
+  expectedStartDate: string
+  expectedEndDate: string
+  auditor: { id: string, name: string } | null
+  reviewer: { id: string, name: string } | null
   progress?: number
   findings?: {
     critical: number,
@@ -50,45 +56,23 @@ export const columns: ColumnDef<Project>[] = [
     )
   },
   {
-    accessorKey: "environment",
-    header: () => <span className="text-muted-foreground font-medium">Environment</span>,
+    accessorKey: "organization",
+    header: () => <span className="text-muted-foreground font-medium">Organization</span>,
     cell: ({ row }) => (
-        <div className="text-muted-foreground">{row.getValue("environment")}</div>
+        <div className="text-muted-foreground">{row.getValue("organization")}</div>
     )
   },
   {
-    accessorKey: "assessment_type",
-    header: () => <span className="text-muted-foreground font-medium">Type</span>,
-  },
-  {
-    accessorKey: "progress",
-    header: () => <span className="text-muted-foreground font-medium">Progress</span>,
+    accessorKey: "priority",
+    header: () => <span className="text-muted-foreground font-medium">Priority</span>,
     cell: ({ row }) => {
-      const progress = row.getValue("progress") as number
-      return (
-          <div className="flex items-center gap-3">
-              <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
-              </div>
-              <span className="text-xs text-muted-foreground font-medium w-8">{progress}%</span>
-          </div>
-      )
-    }
-  },
-  {
-    accessorKey: "findings",
-    header: () => <span className="text-muted-foreground font-medium">Findings</span>,
-    cell: ({ row }) => {
-      const findings = row.original.findings
-      if (!findings) return <span className="text-muted-foreground">-</span>
-      return (
-          <div className="flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-destructive/10 text-xs font-semibold text-destructive ring-1 ring-inset ring-destructive/20">{findings.critical}</span>
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-orange-500/10 text-xs font-semibold text-orange-500 ring-1 ring-inset ring-orange-500/20">{findings.high}</span>
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-yellow-500/10 text-xs font-semibold text-yellow-500 ring-1 ring-inset ring-yellow-500/20">{findings.medium}</span>
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-blue-500/10 text-xs font-semibold text-blue-500 ring-1 ring-inset ring-blue-500/20">{findings.low}</span>
-          </div>
-      )
+      const priority = row.getValue("priority") as string
+      let badgeClasses = "bg-secondary text-secondary-foreground border-border"
+      if (priority === "Critical") badgeClasses = "bg-red-500/10 text-red-500 border-red-500/20"
+      if (priority === "High") badgeClasses = "bg-orange-500/10 text-orange-500 border-orange-500/20"
+      if (priority === "Medium") badgeClasses = "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+      if (priority === "Low") badgeClasses = "bg-blue-500/10 text-blue-500 border-blue-500/20"
+      return <Badge variant="outline" className={badgeClasses}>{priority}</Badge>
     }
   },
   {
@@ -96,7 +80,6 @@ export const columns: ColumnDef<Project>[] = [
     header: () => <span className="text-muted-foreground font-medium">Status</span>,
     cell: ({ row }) => {
       const status = row.getValue("status") as string
-      // Assigned: Gray, In Progress: Blue, Pending Review: Orange, Approved/Completed: Emerald, Changes Requested: Red
       let badgeClasses = "bg-secondary text-secondary-foreground"
       if (status === "Assigned") badgeClasses = "bg-neutral-800 text-neutral-300 border-neutral-700"
       if (status === "In Progress") badgeClasses = "bg-blue-500/10 text-blue-500 border-blue-500/20"
@@ -108,15 +91,38 @@ export const columns: ColumnDef<Project>[] = [
     },
   },
   {
+    id: "team",
+    header: () => <span className="text-muted-foreground font-medium">Team</span>,
+    cell: ({ row }) => {
+      const p = row.original
+      return (
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+          <div><span className="font-medium text-foreground">A:</span> {p.auditor?.name || "Unassigned"}</div>
+          <div><span className="font-medium text-foreground">R:</span> {p.reviewer?.name || "Unassigned"}</div>
+        </div>
+      )
+    }
+  },
+  {
+    accessorKey: "expectedEndDate",
+    header: () => <span className="text-muted-foreground font-medium">Due Date</span>,
+    cell: ({ row }) => {
+      const date = row.getValue("expectedEndDate") as string
+      return <div className="text-muted-foreground">{date ? format(new Date(date), "MMM d, yyyy") : "-"}</div>
+    }
+  },
+  {
     id: "actions",
     cell: ({ row }) => {
       const project = row.original
 
       return (
         <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-card border-border shadow-lg min-w-40">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
@@ -127,7 +133,9 @@ export const columns: ColumnDef<Project>[] = [
               Copy project ID
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem className="cursor-pointer">View details</DropdownMenuItem>
+            <Link href={`/projects/${project.id}`}>
+              <DropdownMenuItem className="cursor-pointer">View details</DropdownMenuItem>
+            </Link>
             <DropdownMenuItem className="cursor-pointer">Edit project</DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem 

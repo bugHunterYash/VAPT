@@ -1,28 +1,61 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, FolderKanban, ShieldAlert, Users, Settings, Bug, BookOpen, Layers, CheckSquare, Activity } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { LayoutDashboard, FolderKanban, ShieldAlert, Users, Settings, Bug, BookOpen, Layers, CheckSquare, Activity, LogOut } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { useAuthStore } from "@/store/authStore"
 
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin", "auditor", "reviewer", "client"] },
-  { title: "Projects", href: "/projects", icon: FolderKanban, roles: ["super_admin", "admin", "auditor", "reviewer", "client"] },
-  { title: "Findings", href: "/findings", icon: Bug, roles: ["super_admin", "admin", "auditor", "reviewer", "client"] },
-  { title: "Reports", href: "/reports", icon: Layers, roles: ["super_admin", "admin", "auditor", "reviewer", "client"] },
-  { title: "Knowledge Base", href: "/kb", icon: BookOpen, roles: ["super_admin", "admin", "auditor", "reviewer"] },
-  { title: "Templates", href: "/templates", icon: ShieldAlert, roles: ["super_admin", "admin"] },
-  { title: "Review Queue", href: "/review", icon: CheckSquare, roles: ["super_admin", "admin", "reviewer"] },
-  { title: "Analytics", href: "/analytics", icon: Activity, roles: ["super_admin", "admin"] },
-  { title: "Administration", href: "/users", icon: Users, roles: ["super_admin", "admin"] },
+  { title: "Dashboard", href: "/dashboard", roles: ["SUPER_ADMIN", "ADMIN"] },
+  { title: "Projects", href: "/projects", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR"] },
+  { title: "Findings", href: "/findings", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR"] },
+  { title: "Reports", href: "/reports", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR"] },
+  { title: "Knowledge Base", href: "/kb", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR", "REVIEWER"] },
+  { title: "Templates", href: "/templates", roles: ["SUPER_ADMIN", "ADMIN"] },
+  { title: "Review Queue", href: "/review", roles: ["SUPER_ADMIN", "REVIEWER"] },
+  { title: "Analytics", href: "/analytics", roles: ["SUPER_ADMIN", "ADMIN"] },
+  { title: "User Management", href: "/admin/users", roles: ["SUPER_ADMIN", "ADMIN"] },
+  { title: "Role Management", href: "/admin/roles", roles: ["SUPER_ADMIN", "ADMIN"] },
 ]
+
+const getIcon = (title: string) => {
+  switch (title) {
+    case "Dashboard": return LayoutDashboard
+    case "Projects": return FolderKanban
+    case "Findings": return Bug
+    case "Reports": return Layers
+    case "Knowledge Base": return BookOpen
+    case "Templates": return ShieldAlert
+    case "Review Queue": return CheckSquare
+    case "Analytics": return Activity
+    case "User Management": return Users
+    case "Role Management": return ShieldAlert
+    default: return LayoutDashboard
+  }
+}
 
 export function Sidebar() {
   const pathname = usePathname()
-  const user = useAuthStore((state) => state.user)
-  const role = user?.role || "admin"
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) setUser(data.user)
+      })
+      .catch(console.error)
+  }, [])
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
+
+  const role = user?.role || ""
 
   const filteredNavItems = navItems.filter((item) =>
     item.roles.includes(role)
@@ -42,7 +75,7 @@ export function Sidebar() {
         <div className="px-4 mb-2 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Menu</div>
         <nav className="grid gap-1 px-3">
           {filteredNavItems.map((item, index) => {
-            const Icon = item.icon
+            const Icon = getIcon(item.title)
             return (
               <Link
                 key={index}
@@ -62,32 +95,26 @@ export function Sidebar() {
         </nav>
       </div>
       <div className="p-4 border-t border-border/50 bg-background/50">
-        <div className="flex items-center justify-between mb-4 px-2">
-            <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-sm">
-                    {user?.full_name?.charAt(0) || 'D'}
+        <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+                <div className="h-9 w-9 rounded-full shrink-0 bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-sm">
+                    {user?.name?.charAt(0) || 'U'}
                 </div>
-                <div>
-                    <p className="text-sm font-semibold">{user?.full_name || 'Demo User'}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{role.replace('_', ' ')} • Org</p>
+                <div className="overflow-hidden">
+                    <p className="text-sm font-semibold truncate">{user?.name || 'Loading...'}</p>
+                    <p className="text-xs text-muted-foreground capitalize truncate">
+                      {user ? `${user.role.replace('_', ' ')}` : ''}
+                    </p>
                 </div>
             </div>
-            <Link href="/settings" className="text-muted-foreground hover:text-primary transition-colors">
-                <Settings className="h-4 w-4" />
-            </Link>
-        </div>
-        <div className="px-2">
-            <select 
-              className="w-full text-xs p-2 rounded-md border border-input bg-card text-muted-foreground focus:ring-1 focus:ring-primary outline-none cursor-pointer"
-              value={role}
-              onChange={(e) => useAuthStore.setState({ user: { id: 1, email: 'demo@vmt.com', full_name: 'Demo User', role: e.target.value } as any })}
-            >
-              <option value="super_admin">Super Admin View</option>
-              <option value="admin">Admin View</option>
-              <option value="auditor">Auditor View</option>
-              <option value="reviewer">Reviewer View</option>
-              <option value="client">Client View</option>
-            </select>
+            <div className="flex gap-1 shrink-0">
+              <Link href="/settings" className="text-muted-foreground hover:text-primary transition-colors p-1">
+                  <Settings className="h-4 w-4" />
+              </Link>
+              <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive transition-colors p-1">
+                  <LogOut className="h-4 w-4" />
+              </button>
+            </div>
         </div>
       </div>
     </div>
