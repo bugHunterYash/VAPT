@@ -36,6 +36,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         activities: {
           include: { user: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'desc' }
+        },
+        checklists: {
+          orderBy: { order: 'asc' }
+        },
+        assessmentSnapshots: {
+          orderBy: { submissionNumber: 'desc' }
         }
       }
     })

@@ -37,20 +37,24 @@ export async function GET(request: Request) {
     const projects = await prisma.project.findMany({
       where: whereClause,
       include: {
-        auditor: true,
-        reviewer: true,
-        creator: true
+        auditor: { select: { id: true, name: true } },
+        reviewer: { select: { id: true, name: true } },
+        checklists: { select: { id: true, result: true } }
       },
       orderBy: { createdAt: 'desc' }
     })
-    
-    // Map to remove sensitive user info
-    const safeProjects = projects.map((p: any) => ({
-      ...p,
-      auditor: p.auditor ? { id: p.auditor.id, name: p.auditor.name, email: p.auditor.email } : null,
-      reviewer: p.reviewer ? { id: p.reviewer.id, name: p.reviewer.name, email: p.reviewer.email } : null,
-      creator: p.creator ? { id: p.creator.id, name: p.creator.name, email: p.creator.email } : null
-    }))
+
+    const safeProjects = projects.map(p => {
+      let progress = 0
+      if (p.checklists && p.checklists.length > 0) {
+        const done = p.checklists.filter(c => c.result !== 'Not Started').length
+        progress = Math.round((done / p.checklists.length) * 100)
+      }
+      return {
+        ...p,
+        progress
+      }
+    })
 
     return NextResponse.json(safeProjects)
   } catch (error: any) {
@@ -68,18 +72,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const {
-      name, organization, applicationName, assessmentType, priority,
+      poNumber, organization, applicationName, assessmentType, priority,
       environment, targetUrl, targetIp, expectedStartDate, expectedEndDate,
       auditorId, reviewerId
     } = body
 
-    if (!name || !organization || !assessmentType || !priority || !environment || !auditorId || !reviewerId || !expectedStartDate || !expectedEndDate) {
+    if (!poNumber || !organization || !assessmentType || !priority || !environment || !auditorId || !reviewerId || !expectedStartDate || !expectedEndDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    const name = applicationName ? `${poNumber} - ${applicationName}` : poNumber
 
     const project = await prisma.project.create({
       data: {
         name,
+        poNumber,
         organization,
         applicationName: applicationName || '',
         assessmentType,
@@ -109,11 +116,11 @@ export async function POST(request: Request) {
       data: [
         {
           userId: auditorId,
-          message: `You have been assigned as the Auditor for project: ${name}`
+          message: `You have been assigned as the Auditor for project: ${poNumber}`
         },
         {
           userId: reviewerId,
-          message: `You have been assigned as the Reviewer for project: ${name}`
+          message: `You have been assigned as the Reviewer for project: ${poNumber}`
         }
       ]
     })

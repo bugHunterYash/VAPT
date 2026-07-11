@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { UserCombobox } from "@/components/users/UserCombobox"
 
 const projectFormSchema = z.object({
-  name: z.string().min(2, "Project name is required"),
+  poNumber: z.string().min(1, "PO number is required"),
   organization: z.string().min(2, "Organization is required"),
   applicationName: z.string().optional(),
   assessmentType: z.string().min(1, "Assessment type is required"),
@@ -44,7 +44,7 @@ export default function CreateProjectPage() {
   const form = useForm<z.infer<typeof projectFormSchema>>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
-      name: "",
+      poNumber: "",
       organization: "",
       applicationName: "",
       assessmentType: "",
@@ -128,12 +128,12 @@ export default function CreateProjectPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="poNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Project Name</FormLabel>
+                      <FormLabel>PO No.</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Q3 CorpNet Audit" {...field} />
+                        <Input placeholder="e.g. PO-123456" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

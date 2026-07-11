@@ -1,49 +1,44 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search, Filter, CheckCircle2, XCircle, Clock, MessageSquare, AlertCircle, Sparkles } from "lucide-react"
-
-const reviewQueue = [
-    {
-        id: 1,
-        title: "SQL Injection in Login Parameter",
-        project: "CorpNet API Penetration Test",
-        author: "John Doe",
-        submittedAt: "2 hours ago",
-        severity: "Critical",
-        aiAssisted: true,
-    },
-    {
-        id: 2,
-        title: "Insecure Direct Object Reference (IDOR)",
-        project: "Main Web App Assessment",
-        author: "Jane Smith",
-        submittedAt: "5 hours ago",
-        severity: "High",
-        aiAssisted: false,
-    },
-    {
-        id: 3,
-        title: "Missing Security Headers",
-        project: "Main Web App Assessment",
-        author: "Jane Smith",
-        submittedAt: "1 day ago",
-        severity: "Low",
-        aiAssisted: true,
-    }
-]
+import { Search, Filter, CheckCircle2, Clock, ShieldAlert, ArrowRight } from "lucide-react"
+import Link from "next/link"
+import { format } from "date-fns"
 
 export default function ReviewQueuePage() {
+    const [projects, setProjects] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
+
+    useEffect(() => {
+        async function fetchProjects() {
+            try {
+                const res = await fetch('/api/projects')
+                if (!res.ok) throw new Error('Failed to fetch')
+                const data = await res.json()
+                // Filter only Pending Review projects
+                const pending = data.filter((p: any) => p.status === 'Pending Review')
+                setProjects(pending)
+            } catch (err: any) {
+                setError(err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchProjects()
+    }, [])
+
     return (
         <div className="flex flex-col gap-8 max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Review Queue</h2>
                     <p className="text-muted-foreground mt-1">
-                        Quality assurance for submitted findings before final report generation.
+                        Quality assurance for submitted assessments before final report generation.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -70,60 +65,56 @@ export default function ReviewQueuePage() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-                {reviewQueue.map((item) => (
-                    <Card key={item.id} className="bg-card border-border/50 shadow-sm rounded-xl overflow-hidden hover:border-primary/50 transition-colors">
-                        <CardContent className="p-0">
-                            <div className="flex flex-col md:flex-row md:items-center p-6 gap-6">
-                                <div className="flex-1 flex flex-col gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="text-lg font-semibold">{item.title}</h3>
-                                        <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-medium">Pending Review</Badge>
-                                        {item.aiAssisted && (
-                                            <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 py-0 text-[10px] gap-1 h-5 px-1.5">
-                                                <Sparkles className="h-3 w-3" /> AI Assisted
-                                            </Badge>
-                                        )}
+            {loading && <div className="text-center p-8">Loading queue...</div>}
+            {error && <div className="text-center text-destructive p-8">{error}</div>}
+
+            {!loading && !error && (
+                <div className="flex flex-col gap-4">
+                    {projects.map((project) => (
+                        <Card key={project.id} className="bg-card border-border/50 shadow-sm rounded-xl overflow-hidden hover:border-primary/50 transition-colors">
+                            <CardContent className="p-0">
+                                <div className="flex flex-col md:flex-row md:items-center p-6 gap-6">
+                                    <div className="flex-1 flex flex-col gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="text-lg font-semibold">{project.name}</h3>
+                                            <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-medium">Pending Review</Badge>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                                            <span className="flex items-center gap-1.5 font-medium text-foreground">
+                                                <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+                                                {project.assessmentType}
+                                            </span>
+                                            <span className="text-border">•</span>
+                                            <span className="font-medium text-foreground">{project.organization}</span>
+                                            <span className="text-border">•</span>
+                                            <span>Auditor: {project.auditor?.name || 'Unknown'}</span>
+                                            <span className="text-border">•</span>
+                                            <span className="flex items-center gap-1">
+                                                <Clock className="h-3 w-3" /> {format(new Date(project.updatedAt), 'MMM d, h:mm a')}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                                        <span className="flex items-center gap-1.5">
-                                            <div className="h-2 w-2 rounded-full bg-destructive" />
-                                            {item.severity}
-                                        </span>
-                                        <span className="text-border">•</span>
-                                        <span className="font-medium text-foreground">{item.project}</span>
-                                        <span className="text-border">•</span>
-                                        <span>Submitted by {item.author}</span>
-                                        <span className="text-border">•</span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-3 w-3" /> {item.submittedAt}
-                                        </span>
+                                    <div className="flex flex-row md:flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-border/50 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
+                                        <Link href={`/projects/${project.id}`}>
+                                            <Button className="w-full gap-2 shadow-none">
+                                                Review Assessment <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
                                     </div>
                                 </div>
-                                <div className="flex flex-row md:flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-border/50 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
-                                    <Button className="flex-1 gap-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 shadow-none">
-                                        <CheckCircle2 className="h-4 w-4" /> Approve
-                                    </Button>
-                                    <Button variant="outline" className="flex-1 gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-500 border border-red-500/20 shadow-none">
-                                        <XCircle className="h-4 w-4" /> Reject
-                                    </Button>
-                                    <Button variant="ghost" className="flex-1 gap-2 text-muted-foreground">
-                                        <MessageSquare className="h-4 w-4" /> Comment
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
             
-            {reviewQueue.length === 0 && (
+            {!loading && !error && projects.length === 0 && (
                 <div className="flex flex-col items-center justify-center p-12 border border-dashed border-border/50 rounded-xl bg-card/30">
                     <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
                         <CheckCircle2 className="h-6 w-6 text-emerald-500" />
                     </div>
                     <h3 className="text-lg font-semibold mb-1">You're all caught up!</h3>
-                    <p className="text-muted-foreground">There are no findings waiting for your review.</p>
+                    <p className="text-muted-foreground">There are no assessments waiting for your review.</p>
                 </div>
             )}
         </div>

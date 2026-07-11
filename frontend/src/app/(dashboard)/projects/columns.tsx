@@ -104,6 +104,30 @@ export const columns: ColumnDef<Project>[] = [
     }
   },
   {
+    id: "progress",
+    header: () => <span className="text-muted-foreground font-medium">Progress</span>,
+    cell: ({ row }) => {
+      const p = row.original
+      const percent = p.progress || 0
+      
+      // If it's Assigned, show -
+      if (p.status === "Assigned") {
+        return <span className="text-muted-foreground text-xs font-medium">Not Started</span>
+      }
+
+      return (
+        <div className="flex flex-col gap-1 w-32">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold">{percent}%</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+            <div className={`h-full ${percent === 100 ? 'bg-emerald-500' : 'bg-primary'} transition-all`} style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      )
+    }
+  },
+  {
     accessorKey: "expectedEndDate",
     header: () => <span className="text-muted-foreground font-medium">Due Date</span>,
     cell: ({ row }) => {
