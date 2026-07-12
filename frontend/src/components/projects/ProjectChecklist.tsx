@@ -148,7 +148,12 @@ export function ProjectChecklist({ project, onRefresh }: { project: any, onRefre
             <span className="ml-4 font-semibold text-amber-500">Pending Review by Reviewer</span>
           )}
           {project.status === 'Approved' && (
-            <span className="ml-4 font-semibold text-emerald-500">Approved</span>
+            <div className="flex items-center gap-4 ml-4">
+              <span className="font-semibold text-emerald-500">Approved</span>
+              <Button onClick={() => window.location.href = `/projects/${project.id}/report-builder`} className="bg-blue-600 hover:bg-blue-700 text-white">
+                Create Report
+              </Button>
+            </div>
           )}
         </div>
       </div>

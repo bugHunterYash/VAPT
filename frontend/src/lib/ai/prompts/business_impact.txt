@@ -1,0 +1,12 @@
+Analyze the following finding and explain its business impact.
+Title: {{FINDING_TITLE}}
+Severity: {{FINDING_SEVERITY}}
+Description: {{FINDING_DESCRIPTION}}
+
+Do not invent or infer any missing information. If details are missing, state "Not Provided".
+Explain the potential risks to the business, data confidentiality, integrity, and availability if this vulnerability were to be exploited. Keep the tone objective and professional.
+
+Return ONLY a JSON object with the following structure:
+{
+  "businessImpact": "string"
+}

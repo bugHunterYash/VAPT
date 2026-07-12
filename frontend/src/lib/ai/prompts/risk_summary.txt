@@ -1,0 +1,14 @@
+Write a professional risk summary for a vulnerability assessment report.
+The assessment type is {{ASSESSMENT_TYPE}} for the application/target {{APPLICATION_NAME}}.
+Findings Summary:
+Critical: {{CRITICAL_COUNT}}
+High: {{HIGH_COUNT}}
+Medium: {{MEDIUM_COUNT}}
+Low: {{LOW_COUNT}}
+
+Summarize the risk profile based on these counts. Keep the tone objective and professional. Do not invent details.
+
+Return ONLY a JSON object with the following structure:
+{
+  "riskSummary": "string"
+}

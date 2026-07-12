@@ -1,0 +1,10 @@
+Write a professional executive summary for a vulnerability assessment report.
+The assessment type is {{ASSESSMENT_TYPE}} for the application/target {{APPLICATION_NAME}} belonging to {{ORGANIZATION}}.
+The assessment was conducted against {{TARGET_URL}}.
+
+Focus on providing a high-level overview of the security posture, the key areas tested, and a summary of the most critical risks discovered (without detailing every single vulnerability). Keep the tone objective and professional.
+
+Return ONLY a JSON object with the following structure:
+{
+  "executiveSummary": "string"
+}

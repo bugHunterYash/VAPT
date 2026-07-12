@@ -86,6 +86,10 @@ model Project {
   
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  version           String?           @default("1.0")
+  classification    String?           @default("Confidential")
+  assessmentStartDate DateTime?
+  assessmentEndDate   DateTime?
   
   activities        ProjectActivity[]
   findings          Finding[]
@@ -125,9 +129,25 @@ model Finding {
   poc              String?
   recommendation   String?
   evidenceUrls     String?  // JSON string or comma separated
+  stepsToReproduce String?
+  payload          String?
+  references       String?
+  riskRating       String?
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
+  evidences        Evidence[]
+}
+
+model Evidence {
+  id          String   @id @default(cuid())
+  findingId   String
+  finding     Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  filePath    String
+  caption     String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
 }
 
 model ReviewComment {
@@ -244,4 +264,22 @@ model ProjectChecklist {
   findingId    String?  // Can point to a Finding ID if result == 'Issues'
   
   updatedAt    DateTime @updatedAt
+}
+
+model KnowledgeBaseFinding {
+  id             String   @id @default(cuid())
+  title          String   @unique
+  description    String
+  severity       String
+  cvss           String?
+  cwe            String?
+  owasp          String?
+  recommendation String
+  businessImpact String?
+  stepsToReproduce String?
+  payload          String?
+  references       String?
+  riskRating       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

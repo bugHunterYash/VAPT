@@ -1,0 +1,14 @@
+Convert the following raw finding details into a professional technical observation.
+Title: {{FINDING_TITLE}}
+Description: {{FINDING_DESCRIPTION}}
+Severity: {{FINDING_SEVERITY}}
+CVSS: {{FINDING_CVSS}}
+CWE: {{FINDING_CWE}}
+
+Do not invent or infer any missing information. If details are missing, state "Not Provided".
+Explain the technical nature of the vulnerability based solely on the provided description. Keep the tone objective and professional.
+
+Return ONLY a JSON object with the following structure:
+{
+  "observation": "string"
+}

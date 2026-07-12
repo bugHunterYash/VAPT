@@ -1,0 +1,11 @@
+Convert the following raw finding details into professional remediation recommendations.
+Title: {{FINDING_TITLE}}
+Recommendation provided by tester: {{FINDING_RECOMMENDATION}}
+
+Do not invent or infer any missing information. If details are missing, state "Not Provided".
+Expand the provided recommendation into actionable, clear steps to remediate the vulnerability. Keep the tone objective and professional.
+
+Return ONLY a JSON object with the following structure:
+{
+  "recommendation": "string"
+}

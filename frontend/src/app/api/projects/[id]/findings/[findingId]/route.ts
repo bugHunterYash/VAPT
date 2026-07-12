@@ -18,19 +18,19 @@ async function getCurrentUser(request: Request) {
   }
 }
 
-export async function POST(
+export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string, findingId: string }> }
 ) {
   try {
     const user = await getCurrentUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { id } = await params
+    const { id, findingId } = await params
     const body = await request.json()
 
     const {
-      title, severity, checklistId, cwe, owasp, affectedUrls,
+      title, severity, cwe, owasp, affectedUrls,
       description, recommendation, evidences
     } = body
 
@@ -38,15 +38,17 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Run in transaction to update ProjectChecklist if checklistId is provided
-    const [finding, projectChecklist] = await prisma.$transaction(async (tx) => {
-      const newFinding = await tx.finding.create({
+    const finding = await prisma.$transaction(async (tx) => {
+      // Delete old evidences
+      await tx.evidence.deleteMany({
+        where: { findingId }
+      })
+
+      const updatedFinding = await tx.finding.update({
+        where: { id: findingId, projectId: id },
         data: {
-          projectId: id,
-          reportedById: user.id as string,
           title,
           severity,
-          checklistId,
           description,
           cwe,
           owasp,
@@ -64,56 +66,20 @@ export async function POST(
         }
       })
 
-      let updatedChecklist = null
-      if (checklistId) {
-        updatedChecklist = await tx.projectChecklist.update({
-          where: { id: checklistId },
-          data: { findingId: newFinding.id }
-        })
-      }
-
-      // Log Activity
       await tx.projectActivity.create({
         data: {
           projectId: id,
           userId: user.id as string,
-          action: `Created new finding: ${title}`
+          action: `Updated finding: ${title}`
         }
       })
 
-      return [newFinding, updatedChecklist]
+      return updatedFinding
     })
 
-    return NextResponse.json(finding, { status: 201 })
+    return NextResponse.json(finding)
   } catch (error) {
-    console.error('Error creating finding:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getCurrentUser(request)
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { id } = await params
-    
-    const findings = await prisma.finding.findMany({
-      where: { projectId: id },
-      include: {
-        evidences: {
-          orderBy: { order: 'asc' }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-
-    return NextResponse.json(findings)
-  } catch (error) {
-    console.error('Error fetching findings:', error)
+    console.error('Error updating finding:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,0 +1,13 @@
+Review the following section of a vulnerability assessment report for quality.
+Section Title: {{SECTION_TITLE}}
+Content: {{SECTION_CONTENT}}
+
+Ensure the content is professional, technically accurate, and objective.
+Identify any grammatical errors, unclear statements, or informal language.
+
+Return ONLY a JSON object with the following structure:
+{
+  "qualityScore": "number (1-10)",
+  "feedback": "string (brief explanation)",
+  "improvedContent": "string (the revised section content)"
+}

@@ -1,0 +1,10 @@
+Write a professional conclusion for a vulnerability assessment report.
+The assessment type is {{ASSESSMENT_TYPE}} for the application/target {{APPLICATION_NAME}} belonging to {{ORGANIZATION}}.
+The assessment was conducted against {{TARGET_URL}}.
+
+Summarize the overall risk rating, provide a concluding statement on the security posture, and mention the importance of addressing the identified vulnerabilities to secure the application. Keep the tone objective and professional.
+
+Return ONLY a JSON object with the following structure:
+{
+  "conclusion": "string"
+}

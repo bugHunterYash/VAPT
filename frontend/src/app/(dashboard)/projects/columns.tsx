@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { toast } from "sonner"
 
 export type Project = {
   id: string
@@ -162,11 +163,11 @@ export const columns: ColumnDef<Project>[] = [
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem 
               onClick={() => {
-                window.open(`http://localhost:8000/api/v1/reports/generate/${project.id}`, '_blank');
+                window.location.href = `/projects/${project.id}/report-builder`;
               }}
               className="text-primary font-medium focus:text-primary focus:bg-primary/10 cursor-pointer"
             >
-              Download DOCX Report
+              Create Report
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -124,3 +124,33 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Failed to update project' }, { status: 500 })
   }
 }
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+
+  try {
+    const body = await request.json()
+    const { version, classification, assessmentStartDate, assessmentEndDate } = body
+
+    const updateData: any = {}
+    if (version !== undefined) updateData.version = version
+    if (classification !== undefined) updateData.classification = classification
+    if (assessmentStartDate !== undefined) updateData.assessmentStartDate = assessmentStartDate ? new Date(assessmentStartDate) : null
+    if (assessmentEndDate !== undefined) updateData.assessmentEndDate = assessmentEndDate ? new Date(assessmentEndDate) : null
+
+    const project = await prisma.project.update({
+      where: { id },
+      data: updateData
+    })
+
+    return NextResponse.json(project)
+  } catch (error) {
+    console.error("PATCH error:", error)
+    return NextResponse.json({ error: 'Failed to patch project' }, { status: 500 })
+  }
+}

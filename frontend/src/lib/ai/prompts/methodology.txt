@@ -1,0 +1,9 @@
+Write a professional methodology section for a vulnerability assessment report.
+The assessment type is {{ASSESSMENT_TYPE}} for the application/target {{APPLICATION_NAME}}.
+
+Describe standard industry methodologies used (like OWASP Top 10 for web apps), the phases of the assessment (Reconnaissance, Scanning, Exploitation, Reporting), and the approach taken to identify vulnerabilities. Keep the tone objective and professional.
+
+Return ONLY a JSON object with the following structure:
+{
+  "methodology": "string"
+}
