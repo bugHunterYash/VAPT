@@ -44,25 +44,25 @@ export function UserCombobox({ role, value, onChange }: UserComboboxProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverTrigger render={
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between font-normal bg-background text-sm h-10 border-input"
-        >
-          {selectedUser ? (
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                {selectedUser.name.charAt(0).toUpperCase()}
-              </div>
-              <span className="truncate">{selectedUser.name}</span>
+        />
+      }>
+        {selectedUser ? (
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+              {selectedUser.name.charAt(0).toUpperCase()}
             </div>
-          ) : (
-            <span className="text-muted-foreground">Select {role.toLowerCase()}...</span>
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+            <span className="truncate">{selectedUser.name}</span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground">Select {role.toLowerCase()}...</span>
+        )}
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0" align="start">
         <Command>

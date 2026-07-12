@@ -83,7 +83,7 @@ export function UploadTemplateModal({ isOpen, onClose, onUploadSuccess }: Upload
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <label className="text-sm font-medium">Assessment Type</label>
-            <Select value={assessmentType} onValueChange={setAssessmentType}>
+            <Select value={assessmentType} onValueChange={(val) => setAssessmentType(val || "")}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>

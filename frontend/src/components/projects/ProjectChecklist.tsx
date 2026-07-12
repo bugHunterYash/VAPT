@@ -153,7 +153,7 @@ export function ProjectChecklist({ project, onRefresh }: { project: any, onRefre
         </div>
       </div>
 
-      <Accordion type="multiple" className="space-y-4">
+      <Accordion multiple className="space-y-4">
         {Array.from(categoriesMap.keys()).map((categoryName) => {
           const items = categoriesMap.get(categoryName)!
           const catCompleted = items.filter((c: any) => c.result !== 'Not Started').length

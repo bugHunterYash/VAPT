@@ -1,4 +1,4 @@
-import PdfPrinter from 'pdfmake'
+const PdfPrinter = require('pdfmake')
 import { TDocumentDefinitions } from 'pdfmake/interfaces'
 
 export async function generatePdfReport(project: any): Promise<Buffer> {
@@ -131,9 +131,9 @@ export async function generatePdfReport(project: any): Promise<Buffer> {
       const pdfDoc = printer.createPdfKitDocument(docDefinition)
       const chunks: Buffer[] = []
 
-      pdfDoc.on('data', (chunk) => chunks.push(chunk))
+      pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk))
       pdfDoc.on('end', () => resolve(Buffer.concat(chunks)))
-      pdfDoc.on('error', (err) => reject(err))
+      pdfDoc.on('error', (err: Error) => reject(err))
 
       pdfDoc.end()
     } catch (error) {

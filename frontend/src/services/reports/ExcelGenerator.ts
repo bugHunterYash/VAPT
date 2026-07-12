@@ -81,5 +81,5 @@ export async function generateExcelReport(project: any): Promise<Buffer> {
   // We will strictly update E & F for matching rows as requested.
 
   const buffer = await workbook.xlsx.writeBuffer()
-  return buffer as Buffer
+  return buffer as unknown as Buffer
 }

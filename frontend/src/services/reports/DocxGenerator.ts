@@ -53,7 +53,7 @@ export async function generateDocxReport(project: any): Promise<Buffer> {
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
-              new TableRow({ children: [new TableCell({ children: [new Paragraph({ text: 'Severity', bold: true })] }), new TableCell({ children: [new Paragraph({ text: 'Count', bold: true })] })] }),
+              new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Severity', bold: true })] })] }), new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Count', bold: true })] })] })] }),
               new TableRow({ children: [new TableCell({ children: [new Paragraph('Critical')] }), new TableCell({ children: [new Paragraph(String(project.findings?.filter((f: any) => f.severity === 'Critical').length || 0))] })] }),
               new TableRow({ children: [new TableCell({ children: [new Paragraph('High')] }), new TableCell({ children: [new Paragraph(String(project.findings?.filter((f: any) => f.severity === 'High').length || 0))] })] }),
               new TableRow({ children: [new TableCell({ children: [new Paragraph('Medium')] }), new TableCell({ children: [new Paragraph(String(project.findings?.filter((f: any) => f.severity === 'Medium').length || 0))] })] }),

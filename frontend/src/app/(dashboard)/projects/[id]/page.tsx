@@ -150,14 +150,12 @@ export default function ProjectDetailsPage() {
           </div>
         ) : (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="lg" disabled={isGenerating} className="gap-2 font-bold bg-indigo-600 text-white hover:bg-indigo-700">
-                {isGenerating ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
-                ) : (
-                  <>Generate Report <ChevronDown className="h-4 w-4" /></>
-                )}
-              </Button>
+            <DropdownMenuTrigger render={<Button size="lg" disabled={isGenerating} className="gap-2 font-bold bg-indigo-600 text-white hover:bg-indigo-700" />}>
+              {isGenerating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
+              ) : (
+                <>Generate Report <ChevronDown className="h-4 w-4" /></>
+              )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <Link href={`/reports?query=${encodeURIComponent(project.name)}`} className="w-full">
