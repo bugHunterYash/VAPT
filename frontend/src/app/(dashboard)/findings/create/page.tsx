@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Sparkles, Save, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -71,7 +72,7 @@ export default function CreateFindingPage() {
               const title = form.getValues("title");
               const category = form.getValues("category");
               if (!title || !category) {
-                alert("Please fill in Title and Category first.");
+                toast.error("Please fill in Title and Category first.");
                 return;
               }
               try {
@@ -87,11 +88,11 @@ export default function CreateFindingPage() {
                   form.setValue("mitigation", data.mitigation);
                 } else {
                   console.error("AI generation failed");
-                  alert("AI generation failed. Ensure backend and Ollama are running.");
+                  toast.error("AI generation failed. Ensure backend and Ollama are running.");
                 }
               } catch (err) {
                 console.error(err);
-                alert("AI generation failed. Ensure backend and Ollama are running.");
+                toast.error("AI generation failed. Ensure backend and Ollama are running.");
               }
             }}
           >

@@ -49,9 +49,29 @@ export async function POST(
       return NextResponse.json({ error: 'Report generation is available only after reviewer approval.' }, { status: 403 })
     }
 
-    const reportHistory = await ReportService.generateReport(projectId, user.id as string, format as 'PDF' | 'DOCX' | 'EXCEL')
+    // Determine new version
+    const previousReports = await prisma.reportHistory.count({
+      where: { projectId, format }
+    })
+    const version = previousReports + 1
 
-    return NextResponse.json(reportHistory)
+    // 1. Create a "Generating" record immediately
+    const reportHistory = await prisma.reportHistory.create({
+      data: {
+        projectId,
+        generatedById: user.id as string,
+        format,
+        filePath: '', // Will be updated when ready
+        version,
+        status: 'Generating'
+      }
+    })
+
+    // 2. Start generation in the background
+    // We don't await this so the API can return 202 immediately
+    ReportService.generateReport(projectId, user.id as string, format as 'PDF' | 'DOCX' | 'EXCEL', reportHistory.id).catch(console.error)
+
+    return NextResponse.json(reportHistory, { status: 202 })
   } catch (error: any) {
     console.error('Export Error:', error)
     return NextResponse.json({ error: error.message || 'Failed to generate report' }, { status: 500 })

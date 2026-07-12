@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 type FindingModalProps = {
   isOpen: boolean
@@ -37,7 +38,7 @@ export function FindingModal({ isOpen, onClose, projectId, checklistId, defaultT
   const [recommendation, setRecommendation] = useState('')
 
   async function handleSave() {
-    if (!title || !severity) return alert('Title and Severity are required.')
+    if (!title || !severity) return toast.error('Title and Severity are required.')
     
     setLoading(true)
     try {
@@ -63,7 +64,7 @@ export function FindingModal({ isOpen, onClose, projectId, checklistId, defaultT
       onSaved()
       onClose()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setLoading(false)
     }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Edit2, CheckCircle2, AlertTriangle, Calendar, User, Shield, PlayCircle, FileText, FileType, Sheet, Archive, ChevronDown, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -64,7 +65,7 @@ export default function ProjectDetailsPage() {
       setIsEditingTeam(false)
       fetchProject()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 
@@ -80,7 +81,7 @@ export default function ProjectDetailsPage() {
       }
       fetchProject()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setStartingAssessment(false)
     }
@@ -102,9 +103,9 @@ export default function ProjectDetailsPage() {
       
       // Successfully generated
       fetchProject() // Refresh so Report History tab updates
-      alert(`Successfully generated ${format} report! Check the Reports tab.`)
+      toast.success(`Successfully generated ${format} report! Check the Reports tab.`)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setIsGenerating(false)
     }
@@ -152,24 +153,27 @@ export default function ProjectDetailsPage() {
             <DropdownMenuTrigger asChild>
               <Button size="lg" disabled={isGenerating} className="gap-2 font-bold bg-indigo-600 text-white hover:bg-indigo-700">
                 {isGenerating ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Generating Report...</>
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
                 ) : (
                   <>Generate Report <ChevronDown className="h-4 w-4" /></>
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuContent align="end" className="w-56">
+              <Link href={`/reports?query=${encodeURIComponent(project.name)}`} className="w-full">
+                <DropdownMenuItem className="cursor-pointer font-medium text-primary">
+                  <PlayCircle className="h-4 w-4 mr-2" /> Reports Center
+                </DropdownMenuItem>
+              </Link>
+              <div className="h-px bg-border my-1" />
               <DropdownMenuItem onClick={() => handleGenerate('PDF')} className="cursor-pointer">
-                <FileText className="h-4 w-4 mr-2 text-red-500" /> Generate PDF Report
+                <FileText className="h-4 w-4 mr-2 text-red-500" /> Generate PDF
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleGenerate('DOCX')} className="cursor-pointer">
-                <FileType className="h-4 w-4 mr-2 text-blue-500" /> Generate DOCX Report
+                <FileType className="h-4 w-4 mr-2 text-blue-500" /> Generate DOCX
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleGenerate('EXCEL')} className="cursor-pointer">
-                <Sheet className="h-4 w-4 mr-2 text-green-500" /> Generate Excel Report
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <Archive className="h-4 w-4 mr-2 text-gray-500" /> Export Complete Package (.zip)
+                <Sheet className="h-4 w-4 mr-2 text-green-500" /> Generate Excel
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

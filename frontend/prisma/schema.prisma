@@ -38,6 +38,7 @@ model User {
   findings         Finding[]         @relation("FindingReporter")
   reviewComments   ReviewComment[]
   generatedReports ReportHistory[]
+  uploadedTemplates AssessmentTemplate[]
 }
 
 model UserActivity {
@@ -170,8 +171,22 @@ model ReportHistory {
   format        String   // PDF, DOCX, EXCEL
   filePath      String
   version       Int
+  status        String   @default("Generating") // Generating, Ready, Failed
   
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+}
+
+model AssessmentTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  assessmentType String
+  version        String
+  filePath       String
+  isActive       Boolean  @default(true)
+  uploadedById   String
+  uploadedBy     User     @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime @default(now())
 }
 
 // ----------------------------------------------------

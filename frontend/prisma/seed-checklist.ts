@@ -1,104 +1,88 @@
 import { PrismaClient } from '@prisma/client'
+import ExcelJS from 'exceljs'
+import path from 'path'
+import fs from 'fs'
 
 const prisma = new PrismaClient()
 
-const webChecklist = {
-  name: 'Web Application Testing Master',
-  assessmentType: 'Web Application',
-  categories: [
-    {
-      name: 'Information Gathering',
-      items: [
-        { code: 'OTG-INFO-001', title: 'Conduct Search Engine Discovery and Reconnaissance for Information Leakage', description: 'Use search engines and reconnaissance to find sensitive info.', tools: 'Google Hacking, Shodan, FOCA' },
-        { code: 'OTG-INFO-002', title: 'Fingerprint Web Server', description: 'Identify the web server and its version.', tools: 'Netcat, Nmap, WhatWeb' },
-        { code: 'OTG-INFO-003', title: 'Review Webserver Metafiles for Information Leakage', description: 'Check robots.txt, sitemap.xml, security.txt.', tools: 'Curl, Wget, Browser' },
-        { code: 'OTG-INFO-004', title: 'Enumerate Applications on Webserver', description: 'Identify other applications hosted on the same server.', tools: 'Nmap, DNS lookups' }
-      ]
-    },
-    {
-      name: 'Configuration and Deployment Management Testing',
-      items: [
-        { code: 'OTG-CONFIG-001', title: 'Test Network Infrastructure Configuration', description: 'Review network configurations and exposed ports.', tools: 'Nmap, Masscan' },
-        { code: 'OTG-CONFIG-002', title: 'Test Application Platform Configuration', description: 'Review web server and application server configurations.', tools: 'Nikto' },
-        { code: 'OTG-CONFIG-006', title: 'Test HTTP Methods', description: 'Identify supported HTTP methods and check for dangerous ones (PUT, DELETE).', tools: 'Curl, Burp Suite' }
-      ]
-    },
-    {
-      name: 'Identity Management Testing',
-      items: [
-        { code: 'OTG-IDENT-001', title: 'Test Role Definitions', description: 'Understand roles and access control hierarchies.', tools: 'Manual Analysis' },
-        { code: 'OTG-IDENT-004', title: 'Test for Account Enumeration and Guessable User Account', description: 'Identify if usernames can be enumerated.', tools: 'Burp Suite, FFuf' }
-      ]
-    },
-    {
-      name: 'Authentication Testing',
-      items: [
-        { code: 'OTG-AUTHN-001', title: 'Test for Credentials Transported over an Unencrypted Channel', description: 'Ensure HTTPS is used for all auth traffic.', tools: 'Wireshark, Browser' },
-        { code: 'OTG-AUTHN-002', title: 'Test for Default Credentials', description: 'Check for default vendor credentials.', tools: 'Hydra, Burp Intruder' },
-        { code: 'OTG-AUTHN-003', title: 'Test for Weak Lock Out Mechanism', description: 'Attempt brute-force to check if account locks out.', tools: 'Burp Suite Intruder' }
-      ]
-    },
-    {
-      name: 'Authorization Testing',
-      items: [
-        { code: 'OTG-AUTHZ-001', title: 'Testing Directory Traversal/File Include', description: 'Test for LFI and directory traversal vulnerabilities.', tools: 'Burp Suite, dotdotpwn' },
-        { code: 'OTG-AUTHZ-002', title: 'Testing for Bypassing Authorization Schema', description: 'Attempt to access endpoints restricted to higher roles.', tools: 'Authorize (Burp Plugin), Postman' },
-        { code: 'OTG-AUTHZ-004', title: 'Testing for Insecure Direct Object References (IDOR)', description: 'Change IDs in parameters to access other users data.', tools: 'Burp Suite, Autorize' }
-      ]
-    },
-    {
-      name: 'Session Management Testing',
-      items: [
-        { code: 'OTG-SESS-001', title: 'Testing for Session Management Schema', description: 'Analyze session tokens for entropy and secure flags.', tools: 'Burp Sequencer' },
-        { code: 'OTG-SESS-002', title: 'Testing for Cookies Attributes', description: 'Ensure Secure and HttpOnly flags are set.', tools: 'Browser DevTools, Burp Suite' }
-      ]
-    },
-    {
-      name: 'Input Validation Testing',
-      items: [
-        { code: 'OTG-INPVAL-001', title: 'Testing for Reflected Cross Site Scripting', description: 'Test reflected inputs for XSS execution.', tools: 'XSStrike, Burp Suite' },
-        { code: 'OTG-INPVAL-002', title: 'Testing for Stored Cross Site Scripting', description: 'Test stored inputs for XSS execution.', tools: 'XSStrike, Burp Suite' },
-        { code: 'OTG-INPVAL-005', title: 'Testing for SQL Injection', description: 'Test inputs for SQL injection vulnerabilities.', tools: 'SQLmap, Burp Suite' }
-      ]
-    }
-  ]
-}
-
 async function main() {
-  console.log('Seeding Checklist Templates...')
+  console.log('Seeding Checklist Templates from Master Excel...')
 
-  // Clean up existing (optional, based on your needs)
-  await prisma.checklistTemplate.deleteMany()
-
-  let catOrder = 1
-  for (const category of webChecklist.categories) {
-    console.log(`Processing category: ${category.name}`)
-    
-    // Create template inside loop or fetch it (optimizing for single template here)
+  const filePath = path.join(process.cwd(), 'storage/templates/web_application/1783837702416-WAPT Checklist 1.xlsx')
+  
+  if (!fs.existsSync(filePath)) {
+    console.error(`Master template not found at ${filePath}`)
+    process.exit(1)
   }
 
-  // Proper nested creation
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.readFile(filePath)
+  const worksheet = workbook.worksheets[0]
+
+  const assessmentType = 'Web Application'
+  const templateName = 'Web Application Testing Master'
+
+  // Clean up existing template to avoid duplicates
+  await prisma.checklistTemplate.deleteMany({
+    where: { assessmentType }
+  })
+
   const template = await prisma.checklistTemplate.create({
     data: {
-      name: webChecklist.name,
-      assessmentType: webChecklist.assessmentType,
-      categories: {
-        create: webChecklist.categories.map((cat, i) => ({
-          name: cat.name,
-          order: i + 1,
-          items: {
-            create: cat.items.map((item, j) => ({
-              code: item.code,
-              title: item.title,
-              description: item.description,
-              tools: item.tools,
-              order: j + 1
-            }))
-          }
-        }))
-      }
+      name: templateName,
+      assessmentType: assessmentType,
     }
   })
+
+  let currentCategoryId: string | null = null
+  let categoryOrder = 1
+  let itemOrder = 1
+
+  // Helper to extract text from a cell which might be rich text
+  const getCellText = (cell: any) => {
+    const val = cell.value
+    if (!val) return ''
+    if (typeof val === 'string') return val.trim()
+    if (val.richText) return val.richText.map((rt: any) => rt.text).join('').trim()
+    return val.toString().trim()
+  }
+
+  for (let rowNumber = 4; rowNumber <= worksheet.rowCount; rowNumber++) {
+    const row = worksheet.getRow(rowNumber)
+    let col1 = getCellText(row.getCell(1))
+    let col2 = getCellText(row.getCell(2))
+    let col3 = getCellText(row.getCell(3))
+    let col4 = getCellText(row.getCell(4))
+    let col5 = getCellText(row.getCell(5))
+
+    // It's a category header if col2 is 'Test Name' (the header row for the category)
+    // Or if it's 'Description' (some headers have 'Description' in col2)
+    if ((col2 === 'Test Name' || col2 === 'Description') && col1) {
+      const category = await prisma.checklistCategory.create({
+        data: {
+          name: col1,
+          order: categoryOrder++,
+          templateId: template.id
+        }
+      })
+      currentCategoryId = category.id
+      itemOrder = 1
+      console.log(`Created Category: ${col1}`)
+    }
+    // It's a test item if it's not a header and has some content
+    else if (currentCategoryId && (col1 || col2)) {
+      await prisma.checklistItem.create({
+        data: {
+          categoryId: currentCategoryId,
+          code: col1.includes('-') ? col1 : `CUSTOM-${itemOrder}`,
+          title: col1.includes('-') ? col2 : col1 || col2,
+          description: col1.includes('-') ? col3 : col2 || col3,
+          tools: col1.includes('-') ? col4 : col3 || col4,
+          order: itemOrder++
+        }
+      })
+    }
+  }
 
   console.log(`Successfully created Template: ${template.name}`)
 }

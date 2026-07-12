@@ -18,6 +18,7 @@ const navItems = [
   { title: "Analytics", href: "/analytics", roles: ["SUPER_ADMIN", "ADMIN"] },
   { title: "User Management", href: "/admin/users", roles: ["SUPER_ADMIN", "ADMIN"] },
   { title: "Role Management", href: "/admin/roles", roles: ["SUPER_ADMIN", "ADMIN"] },
+  { title: "Assessment Templates", href: "/admin/assessment-templates", roles: ["SUPER_ADMIN", "ADMIN"] },
 ]
 
 const getIcon = (title: string) => {
@@ -32,6 +33,7 @@ const getIcon = (title: string) => {
     case "Analytics": return Activity
     case "User Management": return Users
     case "Role Management": return ShieldAlert
+    case "Assessment Templates": return FolderKanban
     default: return LayoutDashboard
   }
 }

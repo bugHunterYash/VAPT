@@ -14,6 +14,8 @@ const geistMono = Geist_Mono({
 
 
 
+import { Toaster } from "@/components/ui/sonner";
+
 export const metadata: Metadata = {
   title: "VMT - Enterprise VAPT Management",
   description: "Operating System for Vulnerability Assessment & Penetration Testing",
@@ -31,6 +33,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <Toaster />
       </body>
     </html>
   );
