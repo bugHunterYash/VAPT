@@ -26,6 +26,10 @@ export function FindingEditor({ open, onOpenChange, projectId, finding, onSave }
   const [impact, setImpact] = useState(finding?.impact || '')
   const [mitigation, setMitigation] = useState(finding?.mitigation || '')
   
+  const [parameters, setParameters] = useState<{name: string, value: string}[]>(() => {
+    try { return finding?.parameter ? JSON.parse(finding.parameter) : [] } catch { return [] }
+  })
+  
   const [evidences, setEvidences] = useState<{filePath: string, caption: string}[]>(finding?.evidences || [])
   const [aiLoading, setAiLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -151,6 +155,7 @@ export function FindingEditor({ open, onOpenChange, projectId, finding, onSave }
         cwe,
         owasp,
         affectedUrls,
+        parameter: JSON.stringify(parameters),
         description,
         impact,
         mitigation,
@@ -288,6 +293,57 @@ export function FindingEditor({ open, onOpenChange, projectId, finding, onSave }
               onClick={() => setUrls([...urls, ''])}
             >
               + Add Another URL
+            </Button>
+          </div>
+
+          <div className="space-y-3 p-6 bg-muted/10 rounded-xl border border-border">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold">Affected Parameters</label>
+              <Badge variant="outline">{parameters.length} Parameter(s)</Badge>
+            </div>
+            <div className="space-y-2">
+              {parameters.map((param, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={param.name}
+                    onChange={(e) => {
+                      const newParams = [...parameters]
+                      newParams[index].name = e.target.value
+                      setParameters(newParams)
+                    }}
+                    className="flex-1 rounded-md border border-input bg-background px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="Parameter Name (e.g. user_id)"
+                  />
+                  <input
+                    type="text"
+                    value={param.value}
+                    onChange={(e) => {
+                      const newParams = [...parameters]
+                      newParams[index].value = e.target.value
+                      setParameters(newParams)
+                    }}
+                    className="flex-1 rounded-md border border-input bg-background px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="Value / Payload (Optional)"
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => setParameters(parameters.filter((_, i) => i !== index))}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full mt-2 border-dashed"
+              onClick={() => setParameters([...parameters, { name: '', value: '' }])}
+            >
+              + Add Parameter
             </Button>
           </div>
 

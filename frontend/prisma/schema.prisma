@@ -101,6 +101,8 @@ model Project {
   reviewComments    ReviewComment[]
   assessmentSnapshots AssessmentSnapshot[]
   reportHistories   ReportHistory[]
+  reportMeta        ProjectReportMeta?
+  teamMembers       TeamMember[]
 }
 
 model ProjectActivity {
@@ -267,4 +269,33 @@ model ProjectChecklist {
   updatedAt    DateTime @updatedAt
 }
 
+model ProjectReportMeta {
+  id                  String   @id @default(cuid())
+  projectId           String   @unique
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  reportTitle         String?
+  documentDate        DateTime?
+  preparedBy          String?
+  approvedBy          String?
+  reviewedBy          String?
+  releasedBy          String?
+  organization        String?
+  certInEmpanelment   String?
+  
+  appUsername         String?
+  appPassword         String?
+  includeCredentials  Boolean  @default(false)
+}
 
+model TeamMember {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  name           String
+  designation    String
+  email          String
+  qualifications String?
+  order          Int      @default(0)
+}

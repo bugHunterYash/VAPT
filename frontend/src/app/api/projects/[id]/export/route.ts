@@ -29,9 +29,9 @@ export async function POST(
 
   const projectId = (await params).id
   const body = await request.json()
-  const { format } = body // 'DOCX' or 'EXCEL'
+  const { format } = body // 'DOCX' or 'EXCEL' or 'PDF'
 
-  if (!['DOCX', 'EXCEL'].includes(format)) {
+  if (!['DOCX', 'EXCEL', 'PDF'].includes(format)) {
     return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
   }
 
@@ -46,6 +46,8 @@ export async function POST(
           include: { evidences: { orderBy: { order: 'asc' } } },
           orderBy: { createdAt: 'desc' }
         },
+        reportMeta: true,
+        teamMembers: { orderBy: { order: 'asc' } }
       }
     })
 
@@ -77,7 +79,9 @@ export async function POST(
     const token = cookieStore.get('auth-token')?.value
     
     const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000'
-    const endpoint = format === 'DOCX' ? '/api/v1/reports/docx' : '/api/v1/reports/excel'
+    let endpoint = '/api/v1/reports/docx'
+    if (format === 'EXCEL') endpoint = '/api/v1/reports/excel'
+    if (format === 'PDF') endpoint = '/api/v1/reports/pdf'
     
     const response = await fetch(`${backendUrl}${endpoint}`, {
       method: 'POST',
@@ -103,6 +107,9 @@ export async function POST(
     if (format === 'DOCX') {
       filename = `${cleanProjectName}_VAPT_Report.docx`
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    } else if (format === 'PDF') {
+      filename = `${cleanProjectName}_VAPT_Report.pdf`
+      contentType = 'application/pdf'
     } else {
       filename = `${cleanProjectName}_Vulnerability_Tracker.xlsx`
       contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

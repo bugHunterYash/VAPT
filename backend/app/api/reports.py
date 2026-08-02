@@ -23,6 +23,23 @@ async def generate_docx(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate DOCX: {str(e)}")
 
+@router.post("/pdf")
+async def generate_pdf(
+    project_data: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user)
+):
+    from app.services.report_service import generate_pdf_report
+    try:
+        buffer = generate_pdf_report(project_data)
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/pdf"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
 @router.post("/excel")
 async def generate_excel(
     project_data: Dict[str, Any],
