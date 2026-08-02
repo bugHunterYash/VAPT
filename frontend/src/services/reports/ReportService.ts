@@ -1,7 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { generatePdfReport } from './PdfGenerator'
-import { generateDocxReport } from './DocxGenerator'
-import { generateExcelReport } from './ExcelGenerator'
 
 export class ReportService {
   /**
@@ -17,7 +15,9 @@ export class ReportService {
           auditor: true,
           reviewer: true,
           checklists: { orderBy: { order: 'asc' } },
-          findings: true,
+          findings: {
+            include: { evidences: { orderBy: { order: 'asc' } } }
+          },
         }
       })
 
@@ -27,21 +27,27 @@ export class ReportService {
       let fileBuffer: Buffer | null = null
       let extension = ''
 
-      switch (format) {
-        case 'PDF':
-          fileBuffer = await generatePdfReport(project)
-          extension = 'pdf'
-          break
-        case 'DOCX':
-          fileBuffer = await generateDocxReport(project)
-          extension = 'docx'
-          break
-        case 'EXCEL':
-          fileBuffer = await generateExcelReport(project)
-          extension = 'xlsx'
-          break
-        default:
-          throw new Error('Unsupported format')
+      if (format === 'PDF') {
+        fileBuffer = await generatePdfReport(project)
+        extension = 'pdf'
+      } else {
+        const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000'
+        const endpoint = format === 'DOCX' ? '/api/v1/reports/docx' : '/api/v1/reports/excel'
+        
+        const response = await fetch(`${backendUrl}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(project)
+        })
+        
+        if (!response.ok) {
+          const errData = await response.text()
+          throw new Error(`Backend generation failed: ${errData}`)
+        }
+        
+        const arrayBuffer = await response.arrayBuffer()
+        fileBuffer = Buffer.from(arrayBuffer)
+        extension = format === 'DOCX' ? 'docx' : 'xlsx'
       }
 
       if (!fileBuffer) {

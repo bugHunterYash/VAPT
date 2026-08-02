@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     const {
       poNumber, organization, applicationName, assessmentType, priority,
       environment, targetUrl, targetIp, expectedStartDate, expectedEndDate,
-      auditorId, reviewerId
+      auditorId, reviewerId, bypassChecklist
     } = body
 
     if (!poNumber || !organization || !assessmentType || !priority || !environment || !auditorId || !reviewerId || !expectedStartDate || !expectedEndDate) {
@@ -83,23 +83,31 @@ export async function POST(request: Request) {
 
     const name = applicationName ? `${poNumber} - ${applicationName}` : poNumber
 
+    const projectData: any = {
+      name,
+      poNumber,
+      organization,
+      applicationName: applicationName || '',
+      assessmentType,
+      priority,
+      environment,
+      targetUrl: targetUrl || '',
+      targetIp: targetIp || null,
+      expectedStartDate: new Date(expectedStartDate),
+      expectedEndDate: new Date(expectedEndDate),
+      auditorId,
+      reviewerId,
+      createdBy: user.id as string
+    }
+
+    if (bypassChecklist === true) {
+      projectData.bypassChecklist = true
+      projectData.bypassChecklistAt = new Date()
+      projectData.bypassChecklistBy = user.id as string
+    }
+
     const project = await prisma.project.create({
-      data: {
-        name,
-        poNumber,
-        organization,
-        applicationName: applicationName || '',
-        assessmentType,
-        priority,
-        environment,
-        targetUrl: targetUrl || '',
-        targetIp: targetIp || null,
-        expectedStartDate: new Date(expectedStartDate),
-        expectedEndDate: new Date(expectedEndDate),
-        auditorId,
-        reviewerId,
-        createdBy: user.id as string
-      }
+      data: projectData
     })
 
     // Log Activity
@@ -110,6 +118,16 @@ export async function POST(request: Request) {
         action: 'Project created and team assigned.'
       }
     })
+
+    if (bypassChecklist === true) {
+      await prisma.projectActivity.create({
+        data: {
+          projectId: project.id,
+          userId: user.id as string,
+          action: 'Project created with Checklist Bypass ENABLED.'
+        }
+      })
+    }
 
     // Create Notifications
     await prisma.notification.createMany({

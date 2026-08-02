@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 import os
 
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-for-vmt")
+SECRET_KEY = os.getenv("JWT_SECRET", os.getenv("SECRET_KEY", "supersecretjwt"))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 

@@ -7,7 +7,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-from app.api import auth, organizations, projects, findings, ai, reports
+from app.api import auth, organizations, projects, findings, ai, reports, evidence
 
 # CORS configuration
 app.add_middleware(
@@ -24,6 +24,7 @@ app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"]
 app.include_router(findings.router, prefix="/api/v1/findings", tags=["findings"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
+app.include_router(evidence.router, prefix="/api/v1/evidence", tags=["evidence"])
 
 @app.get("/")
 def read_root():

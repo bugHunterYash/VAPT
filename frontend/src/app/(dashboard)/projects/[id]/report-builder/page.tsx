@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { FindingEditor } from '@/components/projects/FindingEditor'
-import { Plus, ChevronLeft, LayoutPanelLeft } from 'lucide-react'
+import { Plus, ChevronLeft, FileType, Sheet } from 'lucide-react'
 
 export default function ReportBuilderPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -14,8 +14,8 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
   const [project, setProject] = useState<any>(null)
   const [findings, setFindings] = useState<any[]>([])
   
-  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
+  const [selectedFinding, setSelectedFinding] = useState<any | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -46,21 +46,45 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  async function generateReport() {
+  async function generateReport(format: "DOCX" | "EXCEL") {
     if (!projectId) return
     setGenerating(true)
+    const toastId = toast.loading(`Generating ${format}...`)
     try {
-      const res = await fetch(`/api/reports/generate`, {
+      const res = await fetch(`/api/projects/${projectId}/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, format: "DOCX" })
+        body: JSON.stringify({ format })
       })
-      if (!res.ok) throw new Error("Failed to start generation")
       
-      toast.success("Report generation started! Redirecting...")
-      setTimeout(() => router.push(`/projects/${projectId}`), 1500)
+      if (!res.ok) {
+        let errData
+        try {
+          errData = await res.json()
+        } catch(e) {}
+        throw new Error(errData?.error || `Failed to generate ${format} report`)
+      }
+      
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      
+      let filename = format === 'DOCX' ? 'VAPT_Report.docx' : 'Vulnerability_Tracker.xlsx'
+      const contentDisposition = res.headers.get('content-disposition')
+      if (contentDisposition && contentDisposition.includes('filename="')) {
+        const match = contentDisposition.match(/filename="(.+?)"/)
+        if (match && match[1]) filename = match[1]
+      }
+      
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      toast.success(`${format} generated successfully!`, { id: toastId })
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(err.message, { id: toastId })
+    } finally {
       setGenerating(false)
     }
   }
@@ -87,106 +111,99 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
       setFindings(prev => prev.map(f => f.id === saved.id ? saved : f))
     } else {
       setFindings(prev => [saved, ...prev])
-      setIsCreating(false)
-      setSelectedFindingId(saved.id)
     }
+    
+    setIsModalOpen(false)
   }
 
   function handleCreateNew() {
-    setSelectedFindingId(null)
-    setIsCreating(true)
+    setSelectedFinding(null)
+    setIsModalOpen(true)
+  }
+
+  function handleEdit(finding: any) {
+    setSelectedFinding(finding)
+    setIsModalOpen(true)
   }
 
   if (loading || !project) return <div className="flex h-screen items-center justify-center">Loading Report Builder...</div>
 
-  const selectedFinding = findings.find(f => f.id === selectedFindingId)
-  const showEditor = isCreating || selectedFinding
-
   return (
-    <div className="flex h-[calc(100vh-8rem)] w-full max-w-[1600px] mx-auto bg-background border border-border rounded-xl shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full max-w-7xl mx-auto p-4 md:p-8 space-y-6">
       
-      {/* LEFT SIDEBAR (25%) */}
-      <div className="w-[300px] lg:w-[350px] flex-shrink-0 border-r border-border bg-card flex flex-col">
-        <div className="p-4 border-b border-border space-y-4">
-          <Button variant="ghost" size="sm" className="w-fit -ml-2 text-muted-foreground" onClick={() => router.push(`/projects/${projectId}`)}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Back to Project
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="icon" onClick={() => router.push(`/projects/${projectId}`)}>
+            <ChevronLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold truncate">{project.applicationName}</h1>
-            <p className="text-sm text-muted-foreground">Report Builder</p>
+            <h1 className="text-3xl font-bold tracking-tight">{project.applicationName || project.name}</h1>
+            <p className="text-muted-foreground mt-1">Report Builder - Findings List</p>
           </div>
-          <Button className="w-full" onClick={generateReport} disabled={generating}>
-            {generating ? "Generating..." : "Generate DOCX Report"}
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="gap-2" onClick={() => generateReport("EXCEL")} disabled={generating}>
+            <Sheet className="h-4 w-4 text-green-600" />
+            Generate Tracker
           </Button>
-        </div>
-        
-        <div className="p-4 flex-1 overflow-y-auto space-y-2">
-          <div className="flex items-center justify-between mb-4 text-sm font-medium text-muted-foreground">
-            <span>Findings ({findings.length})</span>
-          </div>
-          
-          {findings.map((f: any) => (
-            <div 
-              key={f.id}
-              onClick={() => {
-                setIsCreating(false)
-                setSelectedFindingId(f.id)
-              }}
-              className={`p-3 rounded-lg cursor-pointer border transition-colors ${selectedFindingId === f.id ? 'bg-primary/10 border-primary shadow-sm' : 'bg-background hover:bg-muted border-transparent hover:border-border'}`}
-            >
-              <div className="font-semibold text-sm line-clamp-1">{f.title}</div>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant={
-                  f.severity === 'Critical' ? 'destructive' :
-                  f.severity === 'High' ? 'destructive' :
-                  f.severity === 'Medium' ? 'default' :
-                  'secondary'
-                } className="text-[10px] px-1.5 py-0.5">{f.severity}</Badge>
-                {f.evidences?.length > 0 && <span className="text-xs text-muted-foreground">{f.evidences.length} img</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        <div className="p-4 border-t border-border bg-card">
-          <Button variant="outline" className="w-full border-dashed" onClick={handleCreateNew}>
-            <Plus className="w-4 h-4 mr-2" /> Add Finding
+          <Button className="gap-2" onClick={() => generateReport("DOCX")} disabled={generating}>
+            <FileType className="h-4 w-4" />
+            Generate DOCX
           </Button>
         </div>
       </div>
 
-      {/* MAIN CONTENT (75%) */}
-      <div className="flex-1 flex flex-col bg-muted/10 relative overflow-hidden">
-        {showEditor ? (
-          <FindingEditor 
-            // Add key so component resets state when switching findings
-            key={selectedFindingId || 'new'} 
-            projectId={projectId!}
-            finding={selectedFinding}
-            onSave={handleSaveFinding}
-            onCancel={() => {
-              setIsCreating(false)
-              if (!selectedFindingId && findings.length > 0) {
-                setSelectedFindingId(findings[0].id)
-              }
-            }}
-          />
+      <div className="bg-card border border-border rounded-xl shadow-sm p-6 flex flex-col min-h-[500px]">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Project Findings ({findings.length})</h2>
+          <Button onClick={handleCreateNew}>
+            <Plus className="w-4 h-4 mr-2" /> Add Finding
+          </Button>
+        </div>
+
+        {findings.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
+            <p>No findings added yet.</p>
+            <Button className="mt-4" onClick={handleCreateNew}>
+              Create First Finding
+            </Button>
+          </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
-            <LayoutPanelLeft className="w-16 h-16 opacity-20 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Select a finding to edit</h2>
-            <p className="text-sm text-center max-w-sm">
-              Click a finding from the sidebar to open the workspace, or click Add Finding to create a new one.
-            </p>
-            {findings.length === 0 && (
-              <Button className="mt-6" onClick={handleCreateNew}>
-                <Plus className="w-4 h-4 mr-2" /> Create First Finding
-              </Button>
-            )}
+          <div className="space-y-3">
+            {findings.map((f: any) => (
+              <div 
+                key={f.id}
+                onClick={() => handleEdit(f)}
+                className="flex items-center justify-between p-4 rounded-lg cursor-pointer border bg-background hover:bg-muted/50 transition-colors"
+              >
+                <div>
+                  <div className="font-semibold text-base">{f.title}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{f.owasp || "No category"} • {f.cwe || "No CWE"}</div>
+                </div>
+                <div className="flex items-center gap-4">
+                  {f.evidences?.length > 0 && <span className="text-xs text-muted-foreground">{f.evidences.length} img</span>}
+                  <Badge variant={
+                    f.severity === 'Critical' ? 'destructive' :
+                    f.severity === 'High' ? 'destructive' :
+                    f.severity === 'Medium' ? 'default' :
+                    'secondary'
+                  } className="px-2 py-1">{f.severity}</Badge>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
+      {isModalOpen && (
+        <FindingEditor
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          projectId={projectId!}
+          finding={selectedFinding}
+          onSave={handleSaveFinding}
+        />
+      )}
     </div>
   )
 }

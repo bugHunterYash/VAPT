@@ -12,7 +12,6 @@ const navItems = [
   { title: "Projects", href: "/projects", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR"] },
   { title: "Findings", href: "/findings", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR"] },
   { title: "Reports", href: "/reports", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR"] },
-  { title: "Knowledge Base", href: "/kb", roles: ["SUPER_ADMIN", "ADMIN", "AUDITOR", "REVIEWER"] },
   { title: "Templates", href: "/templates", roles: ["SUPER_ADMIN", "ADMIN"] },
   { title: "Review Queue", href: "/review", roles: ["SUPER_ADMIN", "REVIEWER"] },
   { title: "Analytics", href: "/analytics", roles: ["SUPER_ADMIN", "ADMIN"] },
@@ -27,7 +26,6 @@ const getIcon = (title: string) => {
     case "Projects": return FolderKanban
     case "Findings": return Bug
     case "Reports": return Layers
-    case "Knowledge Base": return BookOpen
     case "Templates": return ShieldAlert
     case "Review Queue": return CheckSquare
     case "Analytics": return Activity

@@ -1,0 +1,438 @@
+import re
+import pdfplumber
+import openpyxl
+from openpyxl.styles import (
+    Font,
+    Alignment,
+    PatternFill,
+    Border,
+    Side
+)
+ 
+ 
+# =========================================================
+# CLEAN TEXT
+# =========================================================
+ 
+def clean_text(value):
+ 
+    if value is None:
+        return ""
+ 
+    value = str(value)
+ 
+    value = value.replace("\n", " ").replace("\r", " ")
+ 
+    value = re.sub(r'\s+', ' ', value)
+ 
+    return value.strip()
+ 
+ 
+# =========================================================
+# EXTRACT VULNERABILITIES FROM PDF
+# =========================================================
+ 
+def extract_vulnerabilities(pdf_path):
+ 
+    vulnerabilities = []
+ 
+    current_owasp = ""
+ 
+    try:
+        pdf = pdfplumber.open(pdf_path)
+ 
+    except Exception as e:
+        print(f"[!] Failed to open PDF: {e}")
+        return []
+ 
+    with pdf:
+ 
+        for page in pdf.pages:
+ 
+            text = page.extract_text()
+ 
+            if text:
+ 
+                # =====================================================
+                # GET OWASP SECTION
+                # =====================================================
+ 
+                owasp_match = re.search(
+                    r'Testing\s+for\s+(.*)',
+                    text,
+                    re.IGNORECASE
+                )
+ 
+                if owasp_match:
+ 
+                    current_owasp = clean_text(
+                        owasp_match.group(1)
+                    )
+ 
+            # =========================================================
+            # TABLE EXTRACTION
+            # =========================================================
+ 
+            tables = page.extract_tables()
+ 
+            if not tables:
+                continue
+ 
+            for table in tables:
+ 
+                finding = {
+                    "Vulnerability": "",
+                    "OWASP Mapping": current_owasp,
+                    "Description": "",
+                    "Vulnerable URL": "",
+                    "Severity": "",
+                    "Risk/Impact": "",
+                    "Mitigation": ""
+                }
+ 
+                for row in table:
+ 
+                    if not row:
+                        continue
+ 
+                    row = [
+                        clean_text(cell)
+                        for cell in row
+                    ]
+ 
+                    # Remove empty cells
+                    row = [x for x in row if x]
+ 
+                    if len(row) == 0:
+                        continue
+ 
+                    first = row[0].lower()
+ 
+                    # =================================================
+                    # VULNERABILITY TITLE (BLACK HEADER)
+                    # =================================================
+ 
+                    if (
+                        len(row) == 1
+                        and len(row[0]) > 4
+                        and row[0].lower() not in [
+                            "description",
+                            "severity",
+                            "impact",
+                            "mitigation",
+                            "affected url",
+                            "cve/cwe id",
+                            "poc"
+                        ]
+                    ):
+ 
+                        finding["Vulnerability"] = clean_text(
+                            row[0]
+                        )
+ 
+                    # =================================================
+                    # DESCRIPTION
+                    # =================================================
+ 
+                    elif first == "description":
+ 
+                        if len(row) > 1:
+ 
+                            finding["Description"] = clean_text(
+                                " ".join(row[1:])
+                            )
+ 
+                    # =================================================
+                    # SEVERITY
+                    # =================================================
+ 
+                    elif first == "severity":
+ 
+                        if len(row) > 1:
+ 
+                            sev = clean_text(
+                                row[1]
+                            )
+ 
+                            if "critical" in sev.lower():
+                                finding["Severity"] = "Critical"
+ 
+                            elif "high" in sev.lower():
+                                finding["Severity"] = "High"
+ 
+                            elif "medium" in sev.lower():
+                                finding["Severity"] = "Medium"
+ 
+                            elif "low" in sev.lower():
+                                finding["Severity"] = "Low"
+ 
+                            else:
+                                finding["Severity"] = sev
+ 
+                    # =================================================
+                    # AFFECTED URL
+                    # =================================================
+ 
+                    elif first == "affected url":
+ 
+                        if len(row) > 1:
+ 
+                            finding["Vulnerable URL"] = clean_text(
+                                " ".join(row[1:])
+                            )
+ 
+                    # =================================================
+                    # IMPACT
+                    # =================================================
+ 
+                    elif first == "impact":
+ 
+                        if len(row) > 1:
+ 
+                            finding["Risk/Impact"] = clean_text(
+                                " ".join(row[1:])
+                            )
+ 
+                    # =================================================
+                    # MITIGATION
+                    # =================================================
+ 
+                    elif first == "mitigation":
+ 
+                        if len(row) > 1:
+ 
+                            finding["Mitigation"] = clean_text(
+                                " ".join(row[1:])
+                            )
+ 
+                # =====================================================
+                # VALID FINDING CHECK
+                # =====================================================
+ 
+                if (
+                    finding["Vulnerability"]
+                    and (
+                        finding["Description"]
+                        or finding["Vulnerable URL"]
+                        or finding["Risk/Impact"]
+                    )
+                ):
+ 
+                    vulnerabilities.append(finding)
+ 
+    return vulnerabilities
+ 
+ 
+# =========================================================
+# CREATE EXCEL TRACKER
+# =========================================================
+ 
+def create_excel_tracker(data, output_file):
+ 
+    wb = openpyxl.Workbook()
+ 
+    ws = wb.active
+ 
+    ws.title = "Vulnerability Tracker"
+ 
+    # =====================================================
+    # STYLES
+    # =====================================================
+ 
+    HEADER_FILL = PatternFill(
+        start_color="1B365D",
+        end_color="1B365D",
+        fill_type="solid"
+    )
+ 
+    CRITICAL_FILL = PatternFill(
+        start_color="FF4C4C",
+        end_color="FF4C4C",
+        fill_type="solid"
+    )
+ 
+    HIGH_FILL = PatternFill(
+        start_color="FFC7CE",
+        end_color="FFC7CE",
+        fill_type="solid"
+    )
+ 
+    MEDIUM_FILL = PatternFill(
+        start_color="FFF200",
+        end_color="FFF200",
+        fill_type="solid"
+    )
+ 
+    LOW_FILL = PatternFill(
+        start_color="D9EAD3",
+        end_color="D9EAD3",
+        fill_type="solid"
+    )
+ 
+    header_font = Font(
+        bold=True,
+        color="FFFFFF",
+        size=11
+    )
+ 
+    normal_font = Font(
+        size=11
+    )
+ 
+    bold_font = Font(
+        bold=True,
+        size=11
+    )
+ 
+    thin = Side(
+        border_style="thin",
+        color="D3D3D3"
+    )
+ 
+    border = Border(
+        left=thin,
+        right=thin,
+        top=thin,
+        bottom=thin
+    )
+ 
+    center = Alignment(
+        horizontal="center",
+        vertical="center",
+        wrap_text=True
+    )
+ 
+    left = Alignment(
+        horizontal="left",
+        vertical="top",
+        wrap_text=True
+    )
+ 
+    # =====================================================
+    # HEADERS
+    # =====================================================
+ 
+    headers = [
+        "S. No.",
+        "Vulnerability",
+        "OWASP Mapping",
+        "Description",
+        "Vulnerable URL",
+        "Severity",
+        "Risk/Impact",
+        "Mitigation"
+    ]
+ 
+    for col, header in enumerate(headers, 1):
+ 
+        cell = ws.cell(
+            row=1,
+            column=col,
+            value=header
+        )
+ 
+        cell.fill = HEADER_FILL
+        cell.font = header_font
+        cell.alignment = center
+        cell.border = border
+ 
+    # =====================================================
+    # INSERT DATA
+    # =====================================================
+ 
+    for idx, item in enumerate(data, start=2):
+ 
+        ws.cell(idx, 1, idx - 1)
+        ws.cell(idx, 2, item["Vulnerability"])
+        ws.cell(idx, 3, item["OWASP Mapping"])
+        ws.cell(idx, 4, item["Description"])
+        ws.cell(idx, 5, item["Vulnerable URL"])
+        ws.cell(idx, 6, item["Severity"])
+        ws.cell(idx, 7, item["Risk/Impact"])
+        ws.cell(idx, 8, item["Mitigation"])
+ 
+        for col in range(1, 9):
+ 
+            cell = ws.cell(idx, col)
+ 
+            cell.border = border
+ 
+            if col in [1, 6]:
+                cell.alignment = center
+            else:
+                cell.alignment = left
+ 
+            if col == 2:
+                cell.font = bold_font
+            else:
+                cell.font = normal_font
+ 
+        # =================================================
+        # SEVERITY COLORS
+        # =================================================
+ 
+        sev = str(item["Severity"]).lower()
+ 
+        sev_cell = ws.cell(idx, 6)
+ 
+        if "critical" in sev:
+            sev_cell.fill = CRITICAL_FILL
+ 
+        elif "high" in sev:
+            sev_cell.fill = HIGH_FILL
+ 
+        elif "medium" in sev:
+            sev_cell.fill = MEDIUM_FILL
+ 
+        elif "low" in sev:
+            sev_cell.fill = LOW_FILL
+ 
+    # =====================================================
+    # COLUMN WIDTHS
+    # =====================================================
+ 
+    widths = {
+        "A": 8,
+        "B": 35,
+        "C": 35,
+        "D": 65,
+        "E": 50,
+        "F": 15,
+        "G": 65,
+        "H": 65
+    }
+ 
+    for col, width in widths.items():
+ 
+        ws.column_dimensions[col].width = width
+ 
+    # Freeze Header
+    ws.freeze_panes = "A2"
+ 
+    wb.save(output_file)
+ 
+    print(f"[+] Excel tracker generated: {output_file}")
+ 
+ 
+# =========================================================
+# MAIN
+# =========================================================
+ 
+pdf_file = "pdf.pdf"
+ 
+excel_output = "vulnerability_report.xlsx"
+ 
+print("[+] Extracting vulnerabilities from VAPT report...")
+ 
+data = extract_vulnerabilities(pdf_file)
+ 
+print(f"[+] Findings extracted: {len(data)}")
+ 
+print("[+] Generating tracker...")
+ 
+create_excel_tracker(
+    data,
+    excel_output
+)
+ 
+print("[+] Done Successfully!")

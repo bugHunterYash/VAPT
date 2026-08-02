@@ -25,13 +25,17 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
+        user_id = payload.get("sub") or payload.get("id")
+        user_id = str(user_id) if user_id else None
         if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
         
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    if len(user_id) > 20:
+        return User(id=user_id, email=payload.get("email", ""), is_active=True)
+
+    user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise credentials_exception
     return user

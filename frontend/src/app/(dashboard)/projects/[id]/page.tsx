@@ -129,6 +129,7 @@ export default function ProjectDetailsPage() {
               <h2 className="text-3xl font-bold tracking-tight">{project.name}</h2>
               <Badge variant="outline">{project.status}</Badge>
               {project.priority === 'Critical' && <Badge variant="destructive">Critical Priority</Badge>}
+              {project.bypassChecklist && <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">Checklist Bypassed</Badge>}
             </div>
             <p className="text-muted-foreground mt-1">
               {project.organization} {project.applicationName ? `• ${project.applicationName}` : ''}
@@ -143,38 +144,17 @@ export default function ProjectDetailsPage() {
         )}
 
         {project.status !== 'Approved' ? (
-          <div title="Report generation is available only after reviewer approval.">
+          <div title="Report building is available only after reviewer approval.">
             <Button size="lg" className="gap-2 font-bold opacity-50 cursor-not-allowed">
-              Generate Report <ChevronDown className="h-4 w-4" />
+              <FileText className="h-5 w-5" /> Create Report
             </Button>
           </div>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button size="lg" disabled={isGenerating} className="gap-2 font-bold bg-indigo-600 text-white hover:bg-indigo-700" />}>
-              {isGenerating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
-              ) : (
-                <>Generate Report <ChevronDown className="h-4 w-4" /></>
-              )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <Link href={`/reports?query=${encodeURIComponent(project.name)}`} className="w-full">
-                <DropdownMenuItem className="cursor-pointer font-medium text-primary">
-                  <PlayCircle className="h-4 w-4 mr-2" /> Reports Center
-                </DropdownMenuItem>
-              </Link>
-              <div className="h-px bg-border my-1" />
-              <DropdownMenuItem onClick={() => handleGenerate('PDF')} className="cursor-pointer">
-                <FileText className="h-4 w-4 mr-2 text-red-500" /> Generate PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleGenerate('DOCX')} className="cursor-pointer">
-                <FileType className="h-4 w-4 mr-2 text-blue-500" /> Generate DOCX
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleGenerate('EXCEL')} className="cursor-pointer">
-                <Sheet className="h-4 w-4 mr-2 text-green-500" /> Generate Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link href={`/projects/${project.id}/report-builder`}>
+            <Button size="lg" className="gap-2 font-bold bg-indigo-600 text-white hover:bg-indigo-700">
+              <FileText className="h-5 w-5" /> Create Report
+            </Button>
+          </Link>
         )}
       </div>
 

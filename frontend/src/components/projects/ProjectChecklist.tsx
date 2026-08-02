@@ -127,38 +127,79 @@ export function ProjectChecklist({ project, onRefresh }: { project: any, onRefre
       <div className="flex items-center justify-between bg-muted/20 p-4 rounded-lg border">
         <div>
           <h3 className="text-xl font-bold">Assessment Checklist</h3>
-          <p className="text-muted-foreground">{completed} / {total} Completed</p>
+          {project.bypassChecklist ? (
+            <p className="text-muted-foreground font-semibold text-amber-600">Checklist Bypassed</p>
+          ) : (
+            <p className="text-muted-foreground">{completed} / {total} Completed</p>
+          )}
         </div>
-        <div className="flex items-center gap-4">
-          <div className="w-48 bg-muted rounded-full h-2 overflow-hidden">
-            <div className="bg-primary h-full transition-all" style={{ width: `${progressPercent}%` }} />
-          </div>
-          <span className="font-bold">{progressPercent}%</span>
-          
-          {(project.status === 'Assessment In Progress' || project.status === 'Rejected') && currentUser?.id === project.auditorId && (
-            <Button onClick={() => setIsPreviewModalOpen(true)} disabled={!canSubmit} className="ml-4" variant="outline">
-              Preview & Submit
-            </Button>
-          )}
-
-          {project.status === 'Pending Review' && currentUser?.id === project.reviewerId && (
-            <Button onClick={() => setIsPreviewModalOpen(true)} className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white">Review Assessment</Button>
-          )}
-          {project.status === 'Pending Review' && currentUser?.id !== project.reviewerId && (
-            <span className="ml-4 font-semibold text-amber-500">Pending Review by Reviewer</span>
-          )}
-          {project.status === 'Approved' && (
-            <div className="flex items-center gap-4 ml-4">
-              <span className="font-semibold text-emerald-500">Approved</span>
-              <Button onClick={() => window.location.href = `/projects/${project.id}/report-builder`} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Create Report
+        
+        {project.bypassChecklist ? (
+          <div className="flex items-center gap-4">
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">BYPASSED</Badge>
+            
+            {(project.status === 'Assessment In Progress' || project.status === 'Rejected') && currentUser?.id === project.auditorId && (
+              <Button onClick={() => setIsPreviewModalOpen(true)} className="ml-4" variant="outline">
+                Submit Assessment
               </Button>
+            )}
+
+            {project.status === 'Pending Review' && currentUser?.id === project.reviewerId && (
+              <Button onClick={() => setIsPreviewModalOpen(true)} className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white">Review Assessment</Button>
+            )}
+            {project.status === 'Pending Review' && currentUser?.id !== project.reviewerId && (
+              <span className="ml-4 font-semibold text-amber-500">Pending Review by Reviewer</span>
+            )}
+            {project.status === 'Approved' && (
+              <div className="flex items-center gap-4 ml-4">
+                <span className="font-semibold text-emerald-500">Approved</span>
+                <Button onClick={() => window.location.href = `/projects/${project.id}/report-builder`} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Create Report
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <div className="w-48 bg-muted rounded-full h-2 overflow-hidden">
+              <div className="bg-primary h-full transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
-          )}
-        </div>
+            <span className="font-bold">{progressPercent}%</span>
+            
+            {(project.status === 'Assessment In Progress' || project.status === 'Rejected') && currentUser?.id === project.auditorId && (
+              <Button onClick={() => setIsPreviewModalOpen(true)} disabled={!canSubmit} className="ml-4" variant="outline">
+                Preview & Submit
+              </Button>
+            )}
+
+            {project.status === 'Pending Review' && currentUser?.id === project.reviewerId && (
+              <Button onClick={() => setIsPreviewModalOpen(true)} className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white">Review Assessment</Button>
+            )}
+            {project.status === 'Pending Review' && currentUser?.id !== project.reviewerId && (
+              <span className="ml-4 font-semibold text-amber-500">Pending Review by Reviewer</span>
+            )}
+            {project.status === 'Approved' && (
+              <div className="flex items-center gap-4 ml-4">
+                <span className="font-semibold text-emerald-500">Approved</span>
+                <Button onClick={() => window.location.href = `/projects/${project.id}/report-builder`} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Create Report
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <Accordion multiple className="space-y-4">
+      {project.bypassChecklist ? (
+        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+          <AlertTriangle className="w-16 h-16 text-amber-500/50 mb-4" />
+          <h3 className="text-xl font-bold mb-2">Checklist Bypassed</h3>
+          <p className="text-muted-foreground max-w-md">
+            The standard assessment checklist was bypassed for this project by an administrator. You may directly submit the assessment and add vulnerabilities in the report builder.
+          </p>
+        </Card>
+      ) : (
+        <Accordion multiple className="space-y-4">
         {Array.from(categoriesMap.keys()).map((categoryName) => {
           const items = categoriesMap.get(categoryName)!
           const catCompleted = items.filter((c: any) => c.result !== 'Not Started').length
@@ -259,6 +300,8 @@ export function ProjectChecklist({ project, onRefresh }: { project: any, onRefre
           )
         })}
       </Accordion>
+
+      )}
 
       {findingModalItem && (
         <FindingModal

@@ -31,7 +31,7 @@ export async function PATCH(
 
     const {
       title, severity, cwe, owasp, affectedUrls,
-      description, recommendation, evidences
+      description, impact, mitigation, evidences
     } = body
 
     if (!title || !severity) {
@@ -53,7 +53,8 @@ export async function PATCH(
           cwe,
           owasp,
           affectedUrls,
-          recommendation,
+          impact,
+          mitigation,
           ...(evidences && Array.isArray(evidences) && evidences.length > 0 ? {
             evidences: {
               create: evidences.map((ev: any, index: number) => ({

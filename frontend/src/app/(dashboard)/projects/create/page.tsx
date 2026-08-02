@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -9,6 +9,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import {
   Form,
   FormControl,
@@ -16,6 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,12 +36,22 @@ const projectFormSchema = z.object({
   expectedEndDate: z.string().min(1, "End date is required"),
   auditorId: z.string().min(1, "Auditor must be assigned"),
   reviewerId: z.string().min(1, "Reviewer must be assigned"),
+  bypassChecklist: z.boolean().default(false),
 })
 
 export default function CreateProjectPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [currentUser, setCurrentUser] = useState<any>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) setCurrentUser(data.user)
+      })
+  }, [])
 
   const form = useForm<z.infer<typeof projectFormSchema>>({
     resolver: zodResolver(projectFormSchema),
@@ -56,6 +68,7 @@ export default function CreateProjectPage() {
       expectedEndDate: "",
       auditorId: "",
       reviewerId: "",
+      bypassChecklist: false,
     },
   })
 
@@ -342,6 +355,33 @@ export default function CreateProjectPage() {
                   </FormItem>
                 )}
               />
+
+              {currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') && (
+                <div className="pt-4 border-t">
+                  <FormField
+                    control={form.control}
+                    name="bypassChecklist"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            Bypass Checklist
+                          </FormLabel>
+                          <FormDescription>
+                            Skip the standard assessment checklist for urgent or exceptional tasks and allow the auditor to proceed directly to report creation.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 

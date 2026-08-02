@@ -31,7 +31,7 @@ export async function POST(
 
     const {
       title, severity, checklistId, cwe, owasp, affectedUrls,
-      description, recommendation, evidences
+      description, impact, mitigation, evidences
     } = body
 
     if (!title || !severity) {
@@ -51,7 +51,8 @@ export async function POST(
           cwe,
           owasp,
           affectedUrls,
-          recommendation,
+          impact,
+          mitigation,
           ...(evidences && Array.isArray(evidences) && evidences.length > 0 ? {
             evidences: {
               create: evidences.map((ev: any, index: number) => ({

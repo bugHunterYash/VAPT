@@ -1,14 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AIClient } from '@/lib/ai/AIClient';
-import { JsonResponseParser } from '@/lib/ai/JsonResponseParser';
-import { z } from 'zod';
-
-const AutocompleteSchema = z.object({
-  description: z.string(),
-  owasp: z.string(),
-  cwe: z.string(),
-  mitigation: z.string()
-});
+import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
@@ -17,54 +8,35 @@ export async function POST(req: Request) {
     if (!vulnerabilityName) {
       return NextResponse.json({ error: 'vulnerabilityName is required' }, { status: 400 });
     }
-
-    const aiClient = new AIClient();
-
-    const prompt = `You are a professional VAPT Report Assistant.
-You are NOT a penetration tester.
-Your task is only to assist in writing a professional report.
-
-Rules:
-- Never invent vulnerabilities.
-- Never invent URLs.
-- Never invent screenshots.
-- Never invent severity.
-- Never invent evidence.
-- Never change user input.
-
-Input:
-Vulnerability Name: "${vulnerabilityName}"
-
-Output:
-Return ONLY
-- Description
-- OWASP Mapping (Human readable only, e.g. "Broken Access Control", do not include "A01:2021")
-- CWE ID (e.g. "CWE-284")
-- Mitigation
-
-Do not generate CVSS.
-Do not generate HTTP Requests.
-Do not generate HTTP Responses.
-Do not generate Steps to Reproduce.
-Do not generate References.
-
-Return JSON only matching this schema exactly:
-{
-  "description": "...",
-  "owasp": "...",
-  "cwe": "...",
-  "mitigation": "..."
-}`;
-
-    const rawResponse = await aiClient.generate(prompt);
     
-    // Attempt to parse the JSON
-    const parsed = JsonResponseParser.parseAndValidate(rawResponse, AutocompleteSchema);
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
 
-    return NextResponse.json(parsed);
+    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+    const response = await fetch(`${backendUrl}/api/v1/ai/generate-finding`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ short_input: vulnerabilityName }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.text();
+      let errorDetail = errData;
+      try {
+        const parsed = JSON.parse(errData);
+        errorDetail = parsed.detail || errData;
+      } catch (e) {}
+      return NextResponse.json({ error: errorDetail }, { status: response.status });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
 
   } catch (error: any) {
-    console.error('Error generating autocomplete:', error);
+    console.error('Error calling AI backend:', error);
     return NextResponse.json({ error: error.message || 'Failed to autocomplete finding' }, { status: 500 });
   }
 }

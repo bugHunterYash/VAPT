@@ -28,23 +28,27 @@ export async function POST(
 
     const { id } = await params
     
-    // Check checklist validation
+    const project = await prisma.project.findUnique({ where: { id } })
+    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+
     const checklists = await prisma.projectChecklist.findMany({
       where: { projectId: id }
     })
 
-    if (checklists.length === 0) {
-      return NextResponse.json({ error: 'No checklist items found.' }, { status: 400 })
-    }
+    if (!project.bypassChecklist) {
+      if (checklists.length === 0) {
+        return NextResponse.json({ error: 'No checklist items found.' }, { status: 400 })
+      }
 
-    const uncompleted = checklists.filter(c => c.result === 'Not Started')
-    if (uncompleted.length > 0) {
-      return NextResponse.json({ error: `Cannot submit. ${uncompleted.length} items have no result.` }, { status: 400 })
-    }
+      const uncompleted = checklists.filter(c => c.result === 'Not Started')
+      if (uncompleted.length > 0) {
+        return NextResponse.json({ error: `Cannot submit. ${uncompleted.length} items have no result.` }, { status: 400 })
+      }
 
-    const issuesWithoutFindings = checklists.filter(c => c.result === 'Issues' && !c.findingId)
-    if (issuesWithoutFindings.length > 0) {
-      return NextResponse.json({ error: `Cannot submit. ${issuesWithoutFindings.length} issues have no findings attached.` }, { status: 400 })
+      const issuesWithoutFindings = checklists.filter(c => c.result === 'Issues' && !c.findingId)
+      if (issuesWithoutFindings.length > 0) {
+        return NextResponse.json({ error: `Cannot submit. ${issuesWithoutFindings.length} issues have no findings attached.` }, { status: 400 })
+      }
     }
 
     // Get previous snapshots to determine submission number

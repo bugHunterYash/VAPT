@@ -35,6 +35,7 @@ export type Project = {
     medium: number,
     low: number
   }
+  bypassChecklist?: boolean
 }
 
 export const columns: ColumnDef<Project>[] = [
@@ -111,6 +112,10 @@ export const columns: ColumnDef<Project>[] = [
       const p = row.original
       const percent = p.progress || 0
       
+      if (p.bypassChecklist) {
+        return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">Bypassed</Badge>
+      }
+
       // If it's Assigned, show -
       if (p.status === "Assigned") {
         return <span className="text-muted-foreground text-xs font-medium">Not Started</span>

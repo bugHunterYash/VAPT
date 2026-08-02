@@ -91,6 +91,10 @@ model Project {
   assessmentStartDate DateTime?
   assessmentEndDate   DateTime?
   
+  bypassChecklist     Boolean           @default(false)
+  bypassChecklistAt   DateTime?
+  bypassChecklistBy   String?
+  
   activities        ProjectActivity[]
   findings          Finding[]
   checklists        ProjectChecklist[]
@@ -122,17 +126,14 @@ model Finding {
   
   checklistId      String?  // The specific ProjectChecklist row this is tied to
   description      String?
-  cvss             String?
   cwe              String?
   owasp            String?
   affectedUrls     String?
-  poc              String?
-  recommendation   String?
+  parameter        String?
+  impact           String?
+  mitigation       String?
   evidenceUrls     String?  // JSON string or comma separated
-  stepsToReproduce String?
-  payload          String?
-  references       String?
-  riskRating       String?
+  order            Int      @default(0)
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -266,20 +267,4 @@ model ProjectChecklist {
   updatedAt    DateTime @updatedAt
 }
 
-model KnowledgeBaseFinding {
-  id             String   @id @default(cuid())
-  title          String   @unique
-  description    String
-  severity       String
-  cvss           String?
-  cwe            String?
-  owasp          String?
-  recommendation String
-  businessImpact String?
-  stepsToReproduce String?
-  payload          String?
-  references       String?
-  riskRating       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
+
