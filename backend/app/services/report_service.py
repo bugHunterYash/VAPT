@@ -47,6 +47,69 @@ def add_toc(doc):
     r_element.append(fldChar2)
     r_element.append(fldChar3)
 
+def generate_methodology_graphic() -> io.BytesIO:
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    
+    fig, ax = plt.subplots(figsize=(10, 2.5))
+    ax.axis('off')
+    
+    steps = ["Planning", "Discovery", "Attack", "Review &\nAnalysis", "Reporting"]
+    colors = ['#5B9BD5', '#5B9BD5', '#5B9BD5', '#5B9BD5', '#5B9BD5']
+    
+    start_x = 0
+    y = 0.5
+    w = 1.6
+    h = 0.8
+    arrow_w = 0.4
+    gap = 0.2
+    
+    for i, step in enumerate(steps):
+        # Draw chevron
+        if i == 0:
+            # First one is a rectangle with arrow head
+            poly = patches.Polygon([[start_x, y-h/2], [start_x+w, y-h/2], [start_x+w+arrow_w, y], [start_x+w, y+h/2], [start_x, y+h/2]], 
+                                   closed=True, facecolor=colors[i], edgecolor='white', lw=2)
+        else:
+            # Others have arrow tail indent
+            poly = patches.Polygon([[start_x, y-h/2], [start_x+w, y-h/2], [start_x+w+arrow_w, y], [start_x+w, y+h/2], [start_x, y+h/2], [start_x+arrow_w, y]], 
+                                   closed=True, facecolor=colors[i], edgecolor='white', lw=2)
+        
+        # Add shadow
+        import copy
+        shadow = copy.copy(poly)
+        shadow.set_facecolor('gray')
+        shadow.set_alpha(0.3)
+        shadow.set_xy(shadow.get_xy() + [0.03, -0.05])
+        ax.add_patch(shadow)
+        ax.add_patch(poly)
+        
+        # Text
+        text_x = start_x + w/2 + (arrow_w/2 if i>0 else arrow_w/4)
+        ax.text(text_x, y, step, ha='center', va='center', fontweight='bold', color='black', fontsize=11)
+        
+        start_x += w + gap
+        
+    # Draw curved arrow back
+    style = "Simple, tail_width=3, head_width=10, head_length=12"
+    kw = dict(arrowstyle=style, color="#5B9BD5")
+    # From Review (index 3) to Discovery (index 1)
+    x_start = (w + gap) * 3 + w/2
+    x_end = (w + gap) * 1 + w/2
+    a = patches.FancyArrowPatch((x_start, y - h/2 - 0.1), (x_end, y - h/2 - 0.1),
+                                connectionstyle="arc3,rad=0.4", **kw)
+    ax.add_patch(a)
+    
+    ax.set_xlim(-0.5, start_x + 0.5)
+    ax.set_ylim(-0.5, 1.5)
+    
+    plt.tight_layout()
+    img_stream = io.BytesIO()
+    plt.savefig(img_stream, format='png', dpi=150, bbox_inches='tight')
+    plt.close()
+    img_stream.seek(0)
+    return img_stream
+
 def generate_severity_chart(counts: dict) -> io.BytesIO:
     labels = ['Critical', 'High', 'Medium', 'Low', 'Informative']
     values = [counts.get('Critical', 0), counts.get('High', 0), counts.get('Medium', 0), counts.get('Low', 0), counts.get('Info', counts.get('Informative', 0))]
@@ -72,7 +135,7 @@ def generate_severity_chart(counts: dict) -> io.BytesIO:
 def apply_heading_style(doc, level, text):
     h = doc.add_heading(text, level=level)
     for run in h.runs:
-        run.font.color.rgb = RGBColor(31, 78, 120) # Professional Blue
+        run.font.color.rgb = RGBColor(0, 176, 240) # Professional Blue
     return h
 
 def generate_docx_report(project_data: dict) -> io.BytesIO:
@@ -100,62 +163,69 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
         owasp_counts[owasp][sev] += 1
     
     # 01. COVER PAGE
-    for _ in range(5): doc.add_paragraph()
-    t_para = doc.add_paragraph(report_title)
-    t_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    t_para.runs[0].font.size = Pt(28)
-    t_para.runs[0].bold = True
-    t_para.runs[0].font.color.rgb = RGBColor(31, 78, 120)
+    cv_b64 = project_data.get('coverImage')
+    if cv_b64 and ',' in cv_b64:
+        cv_b64 = cv_b64.split(',')[1]
+
+    doc.add_paragraph("\n\n")
+    p_title1 = doc.add_paragraph(f"{app_name}")
+    p_title1.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    p_title1.runs[0].font.size = Pt(22)
+    p_title1.runs[0].font.bold = True
+    p_title1.runs[0].font.color.rgb = RGBColor(0, 176, 240)
     
-    doc.add_paragraph("\n")
-    p_app = doc.add_paragraph(f"Target: {app_name}")
-    p_app.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    p_app.runs[0].font.size = Pt(18)
-    p_app.runs[0].bold = True
-    
-    doc.add_paragraph("\n\n\n\n")
-    p_org = doc.add_paragraph(f"Prepared For:\n{org_name}")
-    p_org.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    p_org.runs[0].font.size = Pt(16)
-    p_org.runs[0].bold = True
-    
-    date_str = meta.get('documentDate', '')
-    if date_str: date_str = date_str.split('T')[0]
-    p_date = doc.add_paragraph(f"\nDate: {date_str}")
-    p_date.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    p_date.runs[0].font.size = Pt(14)
-    
+    p_title2 = doc.add_paragraph("Web Application\nDetailed Vulnerabilities Report")
+    p_title2.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    p_title2.runs[0].font.size = Pt(16)
+    p_title2.runs[0].font.bold = True
+    p_title2.runs[0].font.color.rgb = RGBColor(0, 176, 240)
+
+    doc.add_paragraph("\n\n")
+
+    if cv_b64:
+        import base64
+        import io
+        try:
+            img_data = base64.b64decode(cv_b64)
+            img_stream = io.BytesIO(img_data)
+            img_stream.seek(0)
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            p_img.add_run().add_picture(img_stream, width=Inches(5.0))
+        except Exception:
+            pass
+    else:
+        doc.add_paragraph("\n\n\n\n")
+        
     doc.add_page_break()
     
     # 02. DOCUMENT DETAILS
-    apply_heading_style(doc, 1, "Document Details")
-    t1 = doc.add_table(rows=5, cols=2)
-    t1.style = 'Table Grid'
-    t1.cell(0,0).text = "Project Name"
-    t1.cell(0,1).text = app_name
-    t1.cell(1,0).text = "Prepared By"
-    t1.cell(1,1).text = meta.get('preparedBy', '')
-    t1.cell(2,0).text = "Reviewed By"
-    t1.cell(2,1).text = meta.get('reviewedBy', '')
-    t1.cell(3,0).text = "Approved By"
-    t1.cell(3,1).text = meta.get('approvedBy', '')
-    t1.cell(4,0).text = "Released By"
-    t1.cell(4,1).text = meta.get('releasedBy', '')
-    for r in t1.rows: r.cells[0].paragraphs[0].runs[0].bold = True
-    doc.add_paragraph("\n")
+    doc.add_paragraph("\n\n")
+    t_date = doc.add_paragraph(datetime.datetime.now().strftime("%d/%m/%Y") + "\nDocument Version 1.0\nDocument Version 1.0")
+    t_date.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    t_date.runs[0].font.size = Pt(12)
     
-    doc.add_heading("Revision History", level=2)
-    t2 = doc.add_table(rows=2, cols=4)
-    t2.style = 'Table Grid'
-    t2.cell(0,0).text = "Version"
-    t2.cell(0,1).text = "Date"
-    t2.cell(0,2).text = "Description"
-    t2.cell(0,3).text = "Author"
-    for cell in t2.rows[0].cells: cell.paragraphs[0].runs[0].bold = True
-    t2.cell(1,0).text = project_data.get('version', '1.0')
-    t2.cell(1,1).text = date_str
-    t2.cell(1,2).text = "Initial Release"
-    t2.cell(1,3).text = meta.get('preparedBy', '')
+    doc.add_paragraph("\n\n\n\n")
+    apply_heading_style(doc, 2, "Document Details")
+    t1 = doc.add_table(rows=10, cols=2)
+    t1.style = 'Table Grid'
+    
+    details = [
+        ("Document Name", f"{app_name} Web Application Detailed Vulnerabilities Report"),
+        ("Document Version No.", "1.0"),
+        ("Document Prepared by", "TASL's CTVM Team"),
+        ("Approved By", meta.get('reviewer', 'Manager')),
+        ("Reviewed By", meta.get('auditor', 'Security Team')),
+        ("Released By", meta.get('releasedBy', 'Director')),
+        ("CERT-In Empanelment #", "3(15)/2004-CERT-In (Vol. XIV)"),
+        ("Document Prepared for", org_name),
+        ("Document Date", datetime.datetime.now().strftime("%d/%m/%Y")),
+        ("Document Classification", "CONFIDENTIAL")
+    ]
+    for i, (k, v) in enumerate(details):
+        t1.cell(i,0).text = k
+        t1.cell(i,0).paragraphs[0].runs[0].bold = True
+        t1.cell(i,1).text = v
     doc.add_page_break()
     
     # 03. DECLARATION
@@ -244,10 +314,95 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
         tvo.cell(row_idx, 5).text = str(cat_counts['Info'])
     doc.add_page_break()
     
+    apply_heading_style(doc, 2, "3.3 Vulnerabilities Overview")
+    tvo = doc.add_table(rows=2, cols=7)
+    tvo.style = 'Table Grid'
+    tvo_headers = ["Application", "Total", "Critical", "High", "Medium", "Low", "Informative"]
+    tvo_bg = ['0070C0', 'FFFFFF', 'FF0000', 'FF9900', 'FFFF00', '0070C0', '2F5597']
+    tvo_fg = [RGBColor(255,255,255), RGBColor(0,0,0), RGBColor(255,255,255), RGBColor(0,0,0), RGBColor(0,0,0), RGBColor(255,255,255), RGBColor(255,255,255)]
+    
+    for i, h in enumerate(tvo_headers):
+        c = tvo.cell(0,i)
+        c.text = h
+        c.paragraphs[0].runs[0].bold = True
+        c.paragraphs[0].runs[0].font.color.rgb = tvo_fg[i]
+        c.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), tvo_bg[i])
+        c._tc.get_or_add_tcPr().append(shd)
+        
+    tvo.cell(1,0).text = app_name
+    tvo.cell(1,1).text = str(sum(counts.values()))
+    tvo.cell(1,2).text = str(counts['Critical'])
+    tvo.cell(1,3).text = str(counts['High'])
+    tvo.cell(1,4).text = str(counts['Medium'])
+    tvo.cell(1,5).text = str(counts['Low'])
+    tvo.cell(1,6).text = str(counts['Info'])
+    for i in range(1, 7):
+        tvo.cell(1,i).paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        
+    doc.add_paragraph("\n")
+    p_sum = doc.add_paragraph("A high-level summary of the vulnerabilities is as below:")
+    
+    ths = doc.add_table(rows=len(findings)+1, cols=4)
+    ths.style = 'Table Grid'
+    ths_headers = ["S. No.", "Description", "Severity", "Count of Vulnerabilities"]
+    for i, h in enumerate(ths_headers):
+        c = ths.cell(0,i)
+        c.text = h
+        c.paragraphs[0].runs[0].bold = True
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), 'D9E1F2') # Light blue
+        c._tc.get_or_add_tcPr().append(shd)
+        
+    for idx, f in enumerate(findings, 1):
+        ths.cell(idx, 0).text = str(idx)
+        ths.cell(idx, 1).text = f.get('title', '')
+        ths.cell(idx, 2).text = f.get('severity', '')
+        ths.cell(idx, 3).text = "1"
+        # Alternating row color
+        if idx % 2 == 0:
+            for i in range(4):
+                shd = OxmlElement('w:shd')
+                shd.set(qn('w:val'), 'clear')
+                shd.set(qn('w:color'), 'auto')
+                shd.set(qn('w:fill'), 'D9E1F2')
+                ths.cell(idx, i)._tc.get_or_add_tcPr().append(shd)
+
+    doc.add_page_break()
+    
     # 08. APPROACH
     apply_heading_style(doc, 1, "4. Approach")
+    
+    doc.add_paragraph("This assessment is conducted on OWASP Top 10 framework and is intended to simulate real-world attack scenarios and demonstrate the impact of security weaknesses in human, procedural, and technical defenses that constitute the overall security of web applications. It may be possible to combine the information or access provided by several non-critical vulnerabilities to gain unauthorized access to critical data or systems. Further, by clearly demonstrating how vulnerabilities can be exploited to lead to unauthorized access of critical business systems and confidential data, the report can often provide the management team with greater insight into the business risks related to information security controls.")
+    doc.add_paragraph("\n")
+    
     apply_heading_style(doc, 2, "4.1 Testing Methodology")
-    doc.add_paragraph("The assessment was performed in the following phases: \n1. Planning\n2. Discovery\n3. Attack\n4. Review & Analysis\n5. Reporting")
+    doc.add_paragraph("Security Testing of Web Applications is performed in the following phases:")
+    
+    meth_img = generate_methodology_graphic()
+    p_meth = doc.add_paragraph()
+    p_meth.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    p_meth.add_run().add_picture(meth_img, width=Inches(6.0))
+    doc.add_paragraph("\n")
+    
+    apply_heading_style(doc, 3, "Planning")
+    p1 = doc.add_paragraph(style='List Bullet')
+    p1.add_run("Set scope, identify target and schedule of testing.")
+    p2 = doc.add_paragraph(style='List Bullet')
+    p2.add_run("Plan assessment path, entry point and testing boundary.")
+    
+    apply_heading_style(doc, 3, "Discovery")
+    p3 = doc.add_paragraph(style='List Bullet')
+    p3.add_run("Identify the function and all input fields of the application.")
+    p4 = doc.add_paragraph(style='List Bullet')
+    p4.add_run("Inventories the features, input fields and functional walkthrough.")
+    p5 = doc.add_paragraph(style='List Bullet')
+    p5.add_run("Profile the application authentication & access control and logic.")
     
     apply_heading_style(doc, 2, "4.2 Tools Used")
     doc.add_paragraph("Industry standard commercial and open-source security testing tools were utilized alongside manual verification techniques.")
@@ -347,47 +502,44 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
     doc.add_page_break()
     
     # 10. CONCLUSION
-    apply_heading_style(doc, 1, "6. Conclusion")
-    doc.add_paragraph("The security assessment identified security weaknesses of varying severity within the assessed application.\n")
-    doc.add_paragraph(f"In this assessment, the following vulnerabilities were discovered:\n"
-                      f"• Critical – {counts['Critical']}\n"
-                      f"• High – {counts['High']}\n"
-                      f"• Medium – {counts['Medium']}\n"
-                      f"• Low – {counts['Low']}\n"
-                      f"• Informative – {counts['Info']}\n")
-                      
-    if counts['Critical'] > 0:
-        doc.add_paragraph("Critical vulnerabilities require immediate remediation to prevent severe exploitation.")
-    if counts['High'] > 0:
-        doc.add_paragraph("High-severity vulnerabilities pose significant risk and should be prioritized.")
-    if counts['Medium'] > 0:
-        doc.add_paragraph("Medium-severity findings should be addressed as part of the scheduled remediation plan.")
-    if counts['Low'] > 0:
-        doc.add_paragraph("Low-severity findings represent lower-risk weaknesses but should still be remediated.")
-    if counts['Info'] > 0:
-        doc.add_paragraph("Informational observations should be reviewed as security-hardening opportunities.")
-        
+    doc.add_paragraph("The security of the web applications appears to be weak at certain points.\n")
+    
+    p1 = doc.add_paragraph(style='List Bullet')
+    p1.add_run("In this assessment, the following vulnerabilities were discovered:")
+    p1_1 = doc.add_paragraph(f"Critical – {counts['Critical']}", style='List Bullet 2')
+    p1_2 = doc.add_paragraph(f"High – {counts['High']}", style='List Bullet 2')
+    p1_3 = doc.add_paragraph(f"Medium – {counts['Medium']}", style='List Bullet 2')
+    p1_4 = doc.add_paragraph(f"Low – {counts['Low']}", style='List Bullet 2')
+    p1_5 = doc.add_paragraph(f"Informative-{counts['Info']}", style='List Bullet 2')
+    
+    p2 = doc.add_paragraph(style='List Bullet')
+    p2.add_run("The critical and high vulnerabilities can easily be compromised. Hence, need to be patched immediately on a priority basis.")
+    
+    p3 = doc.add_paragraph(style='List Bullet')
+    p3.add_run("The medium vulnerabilities allow intruders to access information that helps them exploit other vulnerabilities, or better understand the system so that their attacks can be refined. However, Medium severity vulnerabilities should still be addressed at the earliest possible opportunity.")
+    
+    p4 = doc.add_paragraph(style='List Bullet')
+    p4.add_run("The Low vulnerabilities pose a lower threat but should be addressed in the long run.")
+    
+    p5 = doc.add_paragraph(style='List Bullet')
+    p5.add_run("The informative vulnerabilities are for the awareness of the owner.")
+    
     doc.add_page_break()
     
     # 11. DISCLAIMER
-    apply_heading_style(doc, 1, "Disclaimer")
-    disc = doc.add_table(rows=1, cols=1)
-    disc.style = 'Table Grid'
-    disc_c = disc.cell(0,0)
-    disc_c.text = (
-        "1. POINT-IN-TIME ASSESSMENT\n"
-        "The security assessment represents the condition of the tested application/environment during the agreed assessment period. Changes made after testing may affect the validity of findings.\n\n"
-        "2. DEFINED SCOPE\n"
-        "Testing was limited to the targets and scope defined for the assessment. Systems outside the defined scope were not assessed.\n\n"
-        "3. NO GUARANTEE OF COMPLETE SECURITY\n"
-        "The absence of additional findings does not guarantee that the application is completely free from vulnerabilities.\n\n"
-        "4. ENVIRONMENTAL CHANGES\n"
-        "Application updates, infrastructure changes, configuration changes, new dependencies or other modifications may introduce new security risks after completion of the assessment.\n\n"
-        "5. CONFIDENTIALITY\n"
-        "The report may contain confidential security information and should only be distributed to authorized recipients.\n\n"
-        "6. REMEDIATION\n"
-        "The organization receiving the report is responsible for evaluating and implementing appropriate remediation according to its own risk management process."
+    p_disc = doc.add_paragraph("Disclaimer")
+    p_disc.runs[0].font.size = Pt(12)
+    p_disc.runs[0].bold = True
+    p_disc.runs[0].font.underline = True
+    
+    doc.add_paragraph("========================================================================================")
+    
+    p_text = doc.add_paragraph(
+        'This Report (including all annexures, appendices, data, analyses, findings, recommendations, and any related oral or written communications) has been prepared solely in accordance with, and strictly limited to, the agreed scope of work under the applicable RFP, tender, Letter of Intent/ Award, work order, statement of work, or governing contract as the case maybe (collectively "Engagement Documents") between Gujrat Informatics Limited and Tata Advanced Systems Limited ("TASL"). It is based on information, representations, access, and system conditions made available by the DIC and reflects observations limited to the time, environment, assumptions, exclusions, dependencies, and testing parameters defined in the Engagement Documents. This Report is intended exclusively for the DIC internal purposes contemplated under the and does not constitute a legal opinion, expert determination, attestation, certification, continuous monitoring assurance, guarantee of security or compliance, or a comprehensive investigation beyond the defined scope. Except as expressly provided in the Engagement Documents, TASL disclaims all implied warranties, including any implied warranty of merchantability or fitness for a particular purpose. The findings and conclusions herein reflect professional services performed in accordance with the agreed scope and applicable industry practices; however, cyber security assessments are inherently subject to technical, environmental, and temporal limitations, and this Report should be read strictly in the context of the defined scope, assumptions, and assessment period. It is not designed, prepared, or intended to meet evidentiary standards or to support litigation, arbitration, mediation, regulatory inquiry, disciplinary proceedings, insurance claims, or any other adversarial or dispute resolution process. DIC shall remain solely responsible for management decisions taken by it in connection with or based upon the Services and/or the Deliverables and for determining whether the Services and/or Deliverables are appropriate for its purposes and DIC shall solely bear all risks, liabilities and consequences arising from such decisions and TASL shall have no liability whatsoever in this regard. Client shall assign qualified personnel to oversee the Services as well as the use and implementation of the Services and Deliverables. Unless specifically otherwise agreed with DIC in writing, TASL\'s responsibility for performance of the Services is to DIC alone and the Deliverables are permitted to be used only by the DIC for its own operational purposes. Should any Deliverable be disclosed, or otherwise made available, by or through DIC or at DIC’s request to a third party (including but not limited to permitted disclosures to third parties under the relevant provisions), DIC agrees to indemnify and hold TASL and its directors, officers, employees and agents and sub-contractors, harmless against all claims by third parties, and resulting liabilities, losses, damages, costs and expenses (including reasonable external and internal legal costs) arising out of such disclosure. Further, the Report shall not be used, submitted, relied upon, characterized, or represented as expert evidence or determinative proof in any judicial, quasi-judicial, arbitral, regulatory, investigative, or other proceeding. Any use beyond the contractual scope is at the sole discretion, risk, and responsibility of DIC. TASL disclaims all liability arising from or in connection with any such use and shall have no duty of care or liability to any third party, authority, forum, or opposing party that may gain access to the Report. DIC agrees that TASL shall not be impleaded, cited, compelled to testify, produce documents, provide affidavits, clarifications, or expert testimony, or otherwise participate in any proceedings unless separately retained under a written agreement on mutually agreed commercial terms, and DIC shall indemnify and hold harmless TASL from any claims, costs, or liabilities arising out of any unauthorized or extraneous use of this Report.'
     )
+    p_text.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+    
+    doc.add_paragraph("========================================================================================")
     doc.add_page_break()
     
     # 12. THANK YOU

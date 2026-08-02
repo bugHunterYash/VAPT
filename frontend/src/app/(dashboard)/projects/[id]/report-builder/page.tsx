@@ -39,6 +39,19 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
 
+  const [coverImage, setCoverImage] = useState<string | null>(null)
+  const [thankYouImage, setThankYouImage] = useState<string | null>(null)
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | null) => void) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setter(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
   useEffect(() => {
     params.then(p => {
       setProjectId(p.id)
@@ -105,17 +118,21 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
   async function generateReport(format: "DOCX" | "EXCEL" | "PDF") {
     if (!projectId) return
     
-    // Auto-save config first
-    await saveConfiguration()
+    
     
     setGenerating(true)
     const toastId = toast.loading(`Generating ${format} Report... Please wait.`)
-    try {
+        try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
       const res = await fetch(`/api/projects/${projectId}/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format })
+        body: JSON.stringify({ format, coverImage, thankYouImage }),
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
       
       if (!res.ok) {
         let errData
@@ -354,6 +371,17 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
                   ))}
                 </div>
               )}
+
+                            <div className="mb-6 space-y-4 pt-4 border-t">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cover Page Image (Optional)</label>
+                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setCoverImage)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thank You Page Image (Optional)</label>
+                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setThankYouImage)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
+              </div>
 
               <div className="space-y-3 pt-4 border-t">
                 <Button className="w-full gap-2 font-semibold bg-[#1F4E78] hover:bg-[#163a5a]" size="lg" onClick={() => generateReport("DOCX")} disabled={generating}>

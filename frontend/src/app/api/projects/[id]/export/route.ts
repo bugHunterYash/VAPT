@@ -29,7 +29,7 @@ export async function POST(
 
   const projectId = (await params).id
   const body = await request.json()
-  const { format } = body // 'DOCX' or 'EXCEL' or 'PDF'
+  const { format, coverImage, thankYouImage } = body // 'DOCX' or 'EXCEL' or 'PDF'
 
   if (!['DOCX', 'EXCEL', 'PDF'].includes(format)) {
     return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
@@ -83,14 +83,25 @@ export async function POST(
     if (format === 'EXCEL') endpoint = '/api/v1/reports/excel'
     if (format === 'PDF') endpoint = '/api/v1/reports/pdf'
     
+        const backendPayload = {
+      ...project,
+      coverImage,
+      thankYouImage
+    }
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 25000)
+
     const response = await fetch(`${backendUrl}${endpoint}`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(project)
+      body: JSON.stringify(backendPayload),
+      signal: controller.signal
     })
+    clearTimeout(timeoutId)
     
     if (!response.ok) {
       const errData = await response.text()
