@@ -137,6 +137,8 @@ model Finding {
   evidenceUrls     String?  // JSON string or comma separated
   order            Int      @default(0)
 
+  affectedApplication String?
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   

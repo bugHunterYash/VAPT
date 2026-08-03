@@ -18,19 +18,27 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
   
   // Configuration State
   const [meta, setMeta] = useState<any>({
-    reportTitle: 'Vulnerability Assessment & Penetration Testing Report',
-    documentDate: new Date().toISOString().split('T')[0],
+    documentName: 'Web Application Detailed Vulnerabilities Report',
+    documentVersion: '1.0',
     preparedBy: '',
     approvedBy: '',
     reviewedBy: '',
     releasedBy: '',
     organization: '',
+    clientName: '',
     certInEmpanelment: '',
-    appUsername: '',
-    appPassword: '',
+    documentDate: new Date().toISOString().split('T')[0],
+    documentClassification: 'CONFIDENTIAL',
     includeCredentials: false
   })
+  
+  const [revisionHistory, setRevisionHistory] = useState<any[]>([
+    { date: new Date().toISOString().split('T')[0], version: '1.0', description: 'Initial Release' }
+  ])
+  
   const [teamMembers, setTeamMembers] = useState<any[]>([])
+  
+  const [assessmentParameters, setAssessmentParameters] = useState<any[]>([])
   
   const [selectedFinding, setSelectedFinding] = useState<any | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -65,6 +73,14 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
       if (!res.ok) throw new Error('Failed to fetch project')
       const data = await res.json()
       setProject(data)
+      
+      // Initialize a default assessment parameter if none exists
+      setAssessmentParameters([{
+        applicationName: data.applicationName || data.name || '',
+        applicationUrl: data.applicationUrl || '',
+        username: '',
+        password: ''
+      }])
 
       const fRes = await fetch(`/api/projects/${id}/findings`)
       if (fRes.ok) {
@@ -81,6 +97,8 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
             ...mData.reportMeta,
             documentDate: mData.reportMeta.documentDate ? new Date(mData.reportMeta.documentDate).toISOString().split('T')[0] : meta.documentDate
           })
+          if (mData.reportMeta.revisionHistory) setRevisionHistory(mData.reportMeta.revisionHistory)
+          if (mData.reportMeta.assessmentParameters) setAssessmentParameters(mData.reportMeta.assessmentParameters)
         }
         if (mData.teamMembers) {
           setTeamMembers(mData.teamMembers)
@@ -103,6 +121,8 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...meta,
+          revisionHistory,
+          assessmentParameters,
           teamMembers
         })
       })
@@ -118,7 +138,11 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
   async function generateReport(format: "DOCX" | "EXCEL" | "PDF") {
     if (!projectId) return
     
-    
+    // Validation
+    if (findings.length === 0) {
+      toast.error('Cannot generate report: No findings present.')
+      return
+    }
     
     setGenerating(true)
     const toastId = toast.loading(`Generating ${format} Report... Please wait.`)
@@ -129,7 +153,7 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
       const res = await fetch(`/api/projects/${projectId}/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format, coverImage, thankYouImage }),
+        body: JSON.stringify({ format, coverImage, thankYouImage, assessmentParameters, revisionHistory }),
         signal: controller.signal
       })
       clearTimeout(timeoutId)
@@ -256,16 +280,24 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
               <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><FileText className="w-5 h-5 text-primary"/> Document Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
-                  <label className="text-sm font-semibold">Report Title</label>
-                  <input type="text" value={meta.reportTitle} onChange={e => setMeta({...meta, reportTitle: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
+                  <label className="text-sm font-semibold">Document Name / Report Title</label>
+                  <input type="text" value={meta.documentName} onChange={e => setMeta({...meta, documentName: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Document Version No.</label>
+                  <input type="text" value={meta.documentVersion} onChange={e => setMeta({...meta, documentVersion: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Document Classification</label>
+                  <input type="text" value={meta.documentClassification} onChange={e => setMeta({...meta, documentClassification: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Document Date</label>
                   <input type="date" value={meta.documentDate} onChange={e => setMeta({...meta, documentDate: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">Organization / Client Name</label>
-                  <input type="text" value={meta.organization} onChange={e => setMeta({...meta, organization: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" placeholder="e.g. Acme Corp" />
+                  <label className="text-sm font-semibold">Document Prepared For / Client Name</label>
+                  <input type="text" value={meta.clientName} onChange={e => setMeta({...meta, clientName: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" placeholder="e.g. Acme Corp" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Prepared By</label>
@@ -284,10 +316,43 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
                   <input type="text" value={meta.releasedBy} onChange={e => setMeta({...meta, releasedBy: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <label className="text-sm font-semibold">CERT-In Empanelment Info (Optional)</label>
+                  <label className="text-sm font-semibold">CERT-In Empanelment # (Optional)</label>
                   <input type="text" value={meta.certInEmpanelment} onChange={e => setMeta({...meta, certInEmpanelment: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" placeholder="e.g. CERT-In Empaneled Security Auditor..." />
                 </div>
               </div>
+            </div>
+
+            <div className="bg-card border rounded-xl p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold flex items-center gap-2"><FileText className="w-5 h-5 text-primary"/> Revision History</h2>
+                <Button size="sm" variant="outline" onClick={() => setRevisionHistory([...revisionHistory, { date: new Date().toISOString().split('T')[0], version: '1.0', description: '' }])}><Plus className="w-4 h-4 mr-1"/> Add Revision</Button>
+              </div>
+              
+              {revisionHistory.length === 0 ? (
+                <div className="text-center p-6 border border-dashed rounded-lg text-muted-foreground text-sm">No revisions added.</div>
+              ) : (
+                <div className="space-y-4">
+                  {revisionHistory.map((rev, i) => (
+                    <div key={i} className="flex gap-3 items-start border p-4 rounded-lg bg-muted/20 relative">
+                      <button onClick={() => setRevisionHistory(revisionHistory.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"><XCircle className="w-4 h-4"/></button>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full pr-6">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold">Date</label>
+                          <input type="date" value={rev.date} onChange={e => { const newRevs = [...revisionHistory]; newRevs[i].date = e.target.value; setRevisionHistory(newRevs); }} className="w-full border rounded text-sm px-2 py-1.5" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold">Version</label>
+                          <input type="text" value={rev.version} onChange={e => { const newRevs = [...revisionHistory]; newRevs[i].version = e.target.value; setRevisionHistory(newRevs); }} className="w-full border rounded text-sm px-2 py-1.5" />
+                        </div>
+                        <div className="space-y-1 col-span-2 md:col-span-1">
+                          <label className="text-xs font-semibold">Description</label>
+                          <input type="text" value={rev.description} onChange={e => { const newRevs = [...revisionHistory]; newRevs[i].description = e.target.value; setRevisionHistory(newRevs); }} className="w-full border rounded text-sm px-2 py-1.5" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-card border rounded-xl p-6 shadow-sm">
@@ -328,22 +393,47 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className="bg-card border rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold mb-4">Assessment Parameters</h2>
-              <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold">Assessment Parameters</h2>
+                <Button size="sm" variant="outline" onClick={() => setAssessmentParameters([...assessmentParameters, { applicationName: '', applicationUrl: '', username: '', password: '' }])}><Plus className="w-4 h-4 mr-1"/> Add Account</Button>
+              </div>
+              
+              <label className="flex items-center gap-2 mb-4 cursor-pointer p-3 border rounded bg-blue-50/50">
                 <input type="checkbox" checked={meta.includeCredentials} onChange={e => setMeta({...meta, includeCredentials: e.target.checked})} className="w-4 h-4 rounded border-gray-300" />
                 <span className="text-sm font-semibold">Include assessment credentials in generated report</span>
               </label>
               
-              {meta.includeCredentials && (
-                <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/10">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold">Test Username / Account</label>
-                    <input type="text" value={meta.appUsername} onChange={e => setMeta({...meta, appUsername: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold">Test Password</label>
-                    <input type="text" value={meta.appPassword} onChange={e => setMeta({...meta, appPassword: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
-                  </div>
+              {assessmentParameters.length === 0 ? (
+                <div className="text-center p-6 border border-dashed rounded-lg text-muted-foreground text-sm">No assessment targets added.</div>
+              ) : (
+                <div className="space-y-4">
+                  {assessmentParameters.map((param, i) => (
+                    <div key={i} className="flex gap-3 items-start border p-4 rounded-lg bg-muted/10 relative">
+                      <button onClick={() => setAssessmentParameters(assessmentParameters.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"><XCircle className="w-4 h-4"/></button>
+                      <div className="grid grid-cols-2 gap-4 w-full pr-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold">Application Name</label>
+                          <input type="text" value={param.applicationName} onChange={e => { const newParams = [...assessmentParameters]; newParams[i].applicationName = e.target.value; setAssessmentParameters(newParams); }} className="w-full border rounded-md px-3 py-2 text-sm bg-background" placeholder="e.g. Admin Portal" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold">Application URL</label>
+                          <input type="text" value={param.applicationUrl} onChange={e => { const newParams = [...assessmentParameters]; newParams[i].applicationUrl = e.target.value; setAssessmentParameters(newParams); }} className="w-full border rounded-md px-3 py-2 text-sm bg-background" placeholder="https://..." />
+                        </div>
+                        {meta.includeCredentials && (
+                          <>
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold">Username / Account</label>
+                              <input type="text" value={param.username} onChange={e => { const newParams = [...assessmentParameters]; newParams[i].username = e.target.value; setAssessmentParameters(newParams); }} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold">Password</label>
+                              <input type="text" value={param.password} onChange={e => { const newParams = [...assessmentParameters]; newParams[i].password = e.target.value; setAssessmentParameters(newParams); }} className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -450,6 +540,7 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
           projectId={projectId!}
           finding={selectedFinding}
           onSave={handleSaveFinding}
+          assessmentParameters={assessmentParameters}
         />
       )}
     </div>

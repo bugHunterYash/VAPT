@@ -13,13 +13,15 @@ interface FindingEditorProps {
   projectId: string;
   finding?: any;
   onSave: (data: any) => Promise<void>;
+  assessmentParameters?: any[];
 }
 
-export function FindingEditor({ open, onOpenChange, projectId, finding, onSave }: FindingEditorProps) {
+export function FindingEditor({ open, onOpenChange, projectId, finding, onSave, assessmentParameters = [] }: FindingEditorProps) {
   const [title, setTitle] = useState(finding?.title || '')
   const [severity, setSeverity] = useState(finding?.severity || 'Medium')
   const [cwe, setCwe] = useState(finding?.cwe || '')
   const [owasp, setOwasp] = useState(finding?.owasp || '')
+  const [affectedApplication, setAffectedApplication] = useState(finding?.affectedApplication || '')
   const [urls, setUrls] = useState<string[]>(finding?.affectedUrls ? finding.affectedUrls.split('\n') : [''])
   
   const [description, setDescription] = useState(finding?.description || '')
@@ -156,6 +158,7 @@ export function FindingEditor({ open, onOpenChange, projectId, finding, onSave }
         owasp,
         affectedUrls,
         parameter: JSON.stringify(parameters),
+        affectedApplication,
         description,
         impact,
         mitigation,
@@ -253,6 +256,28 @@ export function FindingEditor({ open, onOpenChange, projectId, finding, onSave }
               </select>
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-semibold">Affected Application</label>
+              {assessmentParameters && assessmentParameters.length > 0 ? (
+                <select
+                  value={affectedApplication}
+                  onChange={(e) => setAffectedApplication(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="">Select Application...</option>
+                  {assessmentParameters.map((ap, i) => (
+                    <option key={i} value={ap.applicationName}>{ap.applicationName || 'Unnamed App'}</option>
+                  ))}
+                  <option value="Other">Other</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={affectedApplication}
+                  onChange={(e) => setAffectedApplication(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none"
+                  placeholder="e.g. Admin Portal"
+                />
+              )}
             </div>
           </div>
 

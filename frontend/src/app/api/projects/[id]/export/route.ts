@@ -29,7 +29,7 @@ export async function POST(
 
   const projectId = (await params).id
   const body = await request.json()
-  const { format, coverImage, thankYouImage } = body // 'DOCX' or 'EXCEL' or 'PDF'
+  const { format, coverImage, thankYouImage, assessmentParameters, revisionHistory } = body // 'DOCX' or 'EXCEL' or 'PDF'
 
   if (!['DOCX', 'EXCEL', 'PDF'].includes(format)) {
     return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
@@ -83,10 +83,15 @@ export async function POST(
     if (format === 'EXCEL') endpoint = '/api/v1/reports/excel'
     if (format === 'PDF') endpoint = '/api/v1/reports/pdf'
     
-        const backendPayload = {
+    const backendPayload = {
       ...project,
       coverImage,
-      thankYouImage
+      thankYouImage,
+      assessmentParameters,
+      reportMeta: {
+        ...(project.reportMeta || {}),
+        revisionHistory: revisionHistory || (project.reportMeta as any)?.revisionHistory
+      }
     }
     
     const controller = new AbortController()

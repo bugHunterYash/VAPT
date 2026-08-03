@@ -30,7 +30,7 @@ export async function POST(
     const body = await request.json()
 
     const {
-      title, severity, checklistId, cwe, owasp, affectedUrls,
+      title, severity, checklistId, cwe, owasp, affectedUrls, parameter, affectedApplication,
       description, impact, mitigation, evidences
     } = body
 
@@ -51,6 +51,8 @@ export async function POST(
           cwe,
           owasp,
           affectedUrls,
+          parameter,
+          affectedApplication,
           impact,
           mitigation,
           ...(evidences && Array.isArray(evidences) && evidences.length > 0 ? {

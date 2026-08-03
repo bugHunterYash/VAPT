@@ -30,7 +30,7 @@ export async function PATCH(
     const body = await request.json()
 
     const {
-      title, severity, cwe, owasp, affectedUrls,
+      title, severity, cwe, owasp, affectedUrls, parameter, affectedApplication,
       description, impact, mitigation, evidences
     } = body
 
@@ -53,6 +53,8 @@ export async function PATCH(
           cwe,
           owasp,
           affectedUrls,
+          parameter,
+          affectedApplication,
           impact,
           mitigation,
           ...(evidences && Array.isArray(evidences) && evidences.length > 0 ? {

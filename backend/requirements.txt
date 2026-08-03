@@ -13,3 +13,4 @@ minio
 python-docx
 reportlab
 requests
+docxtpl
