@@ -231,7 +231,12 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
   const findingsMissingSeverity = findings.filter(f => !f.severity || f.severity.trim() === '')
   if (findingsMissingSeverity.length > 0) issues.push(`${findingsMissingSeverity.length} finding(s) missing severity.`)
   if (!meta.reportTitle) issues.push('Report Title is missing.')
-  if (teamMembers.length === 0) issues.push('No auditing team members added.')
+  
+  if (teamMembers.length === 0) {
+    issues.push('At least one auditing team member is required.')
+  } else if (teamMembers.some(m => !m.name?.trim() || !m.designation?.trim() || !m.email?.trim() || !m.qualifications?.trim())) {
+    issues.push('One or more auditing team members have incomplete details.')
+  }
 
   const isReady = issues.length === 0
 

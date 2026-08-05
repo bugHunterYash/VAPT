@@ -111,23 +111,92 @@ def generate_methodology_graphic() -> io.BytesIO:
     return img_stream
 
 def generate_severity_chart(counts: dict) -> io.BytesIO:
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    from matplotlib.patches import Patch
+    import matplotlib.colors as mcolors
+    import numpy as np
+    
     labels = ['Critical', 'High', 'Medium', 'Low', 'Informative']
     values = [counts.get('Critical', 0), counts.get('High', 0), counts.get('Medium', 0), counts.get('Low', 0), counts.get('Info', counts.get('Informative', 0))]
-    colors = ['#FF0000', '#FF9900', '#FFFF00', '#0070C0', '#BFBFBF']
+    base_colors = ['#FF0000', '#FF9900', '#FFFF00', '#0070C0', '#BFBFBF']
     
-    fig, ax = plt.subplots(figsize=(7, 4))
-    bars = ax.bar(labels, values, color=colors, edgecolor='black', linewidth=0.5)
-    ax.set_ylabel('Number of Findings', fontweight='bold')
-    ax.set_title('Vulnerability Severity Overview', fontweight='bold', pad=15)
-    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    fig, ax = plt.subplots(figsize=(7, 4), facecolor='#E6F0FA')
+    ax.set_facecolor('#E6F0FA')
     
-    for bar in bars:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.1, f'{int(height)}', ha='center', va='bottom', fontweight='bold')
+    # Hide standard borders and ticks
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    
+    max_val = max(values) if values else 0
+    y_max = max(max_val + 1, 2)
+    
+    # Grid lines (simulate back wall)
+    for i in range(y_max + 1):
+        ax.plot([-0.5, len(labels) - 0.5], [i, i], color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+        ax.text(-0.6, i, str(i), va='center', ha='right', color='black', fontsize=10)
         
+    width = 0.4
+    dx = 0.12 # depth X
+    dy = 0.12 * y_max / len(labels) * 1.5 # depth Y, scaled by aspect ratio roughly
+    
+    for i, (label, val, color) in enumerate(zip(labels, values, base_colors)):
+        x_center = i
+        x_left = x_center - width/2
+        x_right = x_center + width/2
+        
+        # Determine shade colors
+        c_rgb = mcolors.hex2color(color)
+        c_dark = tuple(max(0, c * 0.7) for c in c_rgb)
+        c_light = tuple(min(1, c * 1.2) for c in c_rgb)
+        
+        # 1. Front face
+        front = patches.Rectangle((x_left, 0), width, val, facecolor=color, edgecolor='black', linewidth=0.5)
+        ax.add_patch(front)
+        
+        # 2. Right face
+        right_poly = patches.Polygon([
+            [x_right, 0],
+            [x_right + dx, dy],
+            [x_right + dx, val + dy],
+            [x_right, val]
+        ], closed=True, facecolor=c_dark, edgecolor='black', linewidth=0.5)
+        ax.add_patch(right_poly)
+        
+        # 3. Top face
+        top_poly = patches.Polygon([
+            [x_left, val],
+            [x_right, val],
+            [x_right + dx, val + dy],
+            [x_left + dx, val + dy]
+        ], closed=True, facecolor=c_light, edgecolor='black', linewidth=0.5)
+        ax.add_patch(top_poly)
+        
+        # Label below bar
+        ax.text(x_center, -0.3, label, ha='center', va='top', fontsize=10, color='black')
+        
+        # Data label above bar
+        label_text = f"{label}, {val}"
+        ax.text(x_center + dx/2, val + dy + (y_max * 0.05), label_text, 
+                ha='center', va='bottom', fontsize=9, color='black',
+                bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=2))
+
+    ax.set_title('Vulnerabilities', fontweight='bold', color='black', size=16, pad=20)
+    
+    # Custom Legend
+    legend_elements = [Patch(facecolor=base_colors[i], edgecolor='black', label=labels[i]) for i in range(len(labels))]
+    ax.legend(handles=legend_elements, loc='lower center', bbox_to_anchor=(0.5, -0.2), ncol=5, frameon=False, handletextpad=0.2, columnspacing=1)
+    
+    ax.set_xlim(-1, len(labels))
+    ax.set_ylim(-0.5, y_max + (y_max * 0.15))
+    
     plt.tight_layout()
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=300)
+    plt.savefig(buf, format='png', dpi=300, facecolor=fig.get_facecolor(), edgecolor='none', bbox_inches='tight')
     buf.seek(0)
     plt.close()
     return buf
@@ -147,7 +216,7 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
     import io
     import json
     
-    template_path = os.path.join(os.path.dirname(__file__), "master_template.docx")
+    template_path = os.path.join(os.path.dirname(__file__), "clean_template.docx")
     
     meta = project_data.get('reportMeta', {})
     if not meta: meta = {}
@@ -182,7 +251,7 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
                 new_row.cells[3].text = str(rev.get('description', ''))
                 
         elif len(t.rows) > 0 and len(t.columns) == 5 and "S. No" in t.cell(0,0).text and "Designation" in t.cell(0,2).text:
-            team = meta.get('auditingTeam', [])
+            team = project_data.get('teamMembers', [])
             for i, member in enumerate(team, 1):
                 new_row = t.add_row()
                 new_row.cells[0].text = str(i)
@@ -220,6 +289,24 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
                 new_row.cells[2].text = sev
                 new_row.cells[3].text = "1"
     
+    # Fix split Jinja tags across multiple runs
+    def consolidate_tags(paragraphs):
+        for p in paragraphs:
+            if "{{" in p.text and "}}" in p.text:
+                full_text = p.text
+                if len(p.runs) > 1:
+                    for i, r in enumerate(p.runs):
+                        if i == 0:
+                            r.text = full_text
+                        else:
+                            r.text = ""
+                            
+    consolidate_tags(doc.paragraphs)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                consolidate_tags(cell.paragraphs)
+                
     temp_buffer = io.BytesIO()
     doc.save(temp_buffer)
     temp_buffer.seek(0)
@@ -299,6 +386,17 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
     chart_buf = generate_severity_chart(counts)
     chart_image = InlineImage(tpl, chart_buf, width=Inches(6.5))
     
+    # Add date formatting helper
+    def format_date(d_str):
+        if not d_str: return datetime.datetime.now().strftime("%d/%m/%Y")
+        try:
+            if 'T' in d_str:
+                dt = datetime.datetime.fromisoformat(d_str.replace('Z', '+00:00'))
+                return dt.strftime("%d/%m/%Y")
+        except Exception:
+            pass
+        return d_str
+
     context = {
         'reportTitle': meta.get('documentName', 'Web Application Detailed Vulnerabilities Report'),
         'documentVersion': meta.get('documentVersion', '1.0'),
@@ -313,8 +411,8 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
         
         'applicationName': assessments[0]['applicationName'] if assessments else 'N/A',
         'organization': meta.get('organization', 'Organization'),
-        'documentDate': meta.get('documentDate', datetime.datetime.now().strftime("%d/%m/%Y")),
-        'startDate': meta.get('startDate', datetime.datetime.now().strftime("%d/%m/%Y")),
+        'documentDate': format_date(meta.get('documentDate')),
+        'startDate': format_date(meta.get('startDate')),
         'totalVulns': sum(counts.values()),
         'critVulns': counts['Critical'],
         'highVulns': counts['High'],
@@ -324,9 +422,92 @@ def generate_docx_report(project_data: dict) -> io.BytesIO:
         'findings': findings
     }
     
+    # Generation-time Integrity Checks
+    expected_findings_count = len(findings_raw)
+    calculated_findings_count = sum(counts.values())
+    if expected_findings_count != calculated_findings_count:
+        raise ValueError(f"Integrity Check Failed: Expected {expected_findings_count} total severity count, but calculated {calculated_findings_count}.")
+        
+    if len(findings) != expected_findings_count:
+        raise ValueError(f"Integrity Check Failed: Expected {expected_findings_count} generated findings, but prepared {len(findings)}.")
+        
     tpl.render(context)
+    
+    # Post-render Image Blob Replacement
+    cover_image_b64 = project_data.get('coverImage')
+    thank_you_image_b64 = project_data.get('thankYouImage')
+    
+    if cover_image_b64 or thank_you_image_b64:
+        from PIL import Image
+        import base64
+        
+        def replace_blob_with_crop(part, b64_str):
+            if ',' in b64_str:
+                b64_str = b64_str.split(',')[1]
+            try:
+                new_bytes = base64.b64decode(b64_str)
+                orig_img = Image.open(io.BytesIO(part.blob))
+                orig_w, orig_h = orig_img.size
+                orig_aspect = orig_w / orig_h
+                
+                new_img = Image.open(io.BytesIO(new_bytes))
+                new_w, new_h = new_img.size
+                new_aspect = new_w / new_h
+                
+                if abs(orig_aspect - new_aspect) > 0.05:
+                    if new_aspect > orig_aspect:
+                        # Wider: crop sides
+                        target_w = int(new_h * orig_aspect)
+                        left = (new_w - target_w) // 2
+                        new_img = new_img.crop((left, 0, left + target_w, new_h))
+                    else:
+                        # Taller: crop top/bottom
+                        target_h = int(new_w / orig_aspect)
+                        top = (new_h - target_h) // 2
+                        new_img = new_img.crop((0, top, new_w, top + target_h))
+                
+                out_buf = io.BytesIO()
+                new_img.save(out_buf, format=orig_img.format or 'PNG')
+                part._blob = out_buf.getvalue()
+            except Exception as e:
+                print(f"Error replacing image: {e}")
+
+        # Find cover image (first image in document)
+        if cover_image_b64:
+            for p in tpl.docx.paragraphs:
+                blips = p._p.xpath('.//a:blip')
+                if blips:
+                    rId = blips[0].get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+                    part = tpl.docx.part.rels[rId].target_part
+                    replace_blob_with_crop(part, cover_image_b64)
+                    break
+                    
+        # Find thank you image (last image in document)
+        if thank_you_image_b64:
+            for p in reversed(tpl.docx.paragraphs):
+                blips = p._p.xpath('.//a:blip')
+                if blips:
+                    rId = blips[0].get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+                    part = tpl.docx.part.rels[rId].target_part
+                    replace_blob_with_crop(part, thank_you_image_b64)
+                    break
+
     buffer = io.BytesIO()
     tpl.save(buffer)
+    buffer.seek(0)
+    
+    # Final Validation: Scan for unresolved tags
+    final_doc = docx.Document(buffer)
+    for p in final_doc.paragraphs:
+        if "{{" in p.text or "}}" in p.text:
+            raise ValueError(f"Integrity Check Failed: Unresolved template syntax found in paragraph: '{p.text}'")
+    for table in final_doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    if "{{" in p.text or "}}" in p.text:
+                        raise ValueError(f"Integrity Check Failed: Unresolved template syntax found in table cell: '{p.text}'")
+                        
     buffer.seek(0)
     return buffer
 
